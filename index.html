@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#0d1513" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Inbox" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0d1513; --bg-2:#111d1a; --surface:#15211e; --surface-2:#1b2925;
+    --line:#25332e; --ink:#e9e6da; --muted:#8a978f; --faint:#5c6863;
+    --accent:#e3a857; --accent-dim:#b9863f;
+    --ok:#7fb88a; --warn:#d98a6a;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --ui:"Hanken Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--ui); -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column;
+    /* fill the phone, respect notches */
+    min-height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap{flex:1; display:flex; flex-direction:column; max-width:680px; width:100%; margin:0 auto; min-height:0}
+
+  /* ── header ───────────────────────────── */
+  header{
+    display:flex; align-items:baseline; gap:.6rem;
+    padding:1.1rem 1.25rem .9rem; border-bottom:1px solid var(--line);
+  }
+  .mark{font-size:1.18rem; font-weight:700; letter-spacing:-.02em}
+  .target{
+    font-family:var(--mono); font-size:.72rem; color:var(--faint);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .status{margin-left:auto; display:flex; align-items:center; gap:.45rem; flex:none}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--faint); transition:background .3s}
+  .dot.online{background:var(--ok)}
+  .dot.offline{background:var(--warn)}
+  .status-txt{font-size:.7rem; color:var(--muted); font-variant-numeric:tabular-nums}
+  .gear{
+    background:none; border:none; color:var(--faint); cursor:pointer;
+    padding:.2rem; margin-left:.2rem; display:flex; border-radius:8px;
+  }
+  .gear:hover{color:var(--muted)}
+  .gear:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* ── stream ───────────────────────────── */
+  .stream{
+    flex:1; min-height:0; overflow-y:auto; padding:1.1rem 1.25rem .5rem;
+    display:flex; flex-direction:column; gap:.7rem; justify-content:flex-end;
+  }
+  .empty{
+    margin:auto 0; text-align:center; color:var(--faint);
+    display:flex; flex-direction:column; gap:.5rem; align-items:center; padding:2rem 0;
+  }
+  .empty .glyph{font-family:var(--mono); font-size:1.6rem; color:var(--accent-dim); opacity:.7}
+  .empty p{margin:0; font-size:.92rem; max-width:24ch; line-height:1.5}
+
+  .note{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:.7rem .85rem; animation:settle .34s cubic-bezier(.2,.7,.3,1);
+  }
+  @keyframes settle{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+  .note .text{
+    font-family:var(--mono); font-size:.9rem; line-height:1.5; color:var(--ink);
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .note .meta{
+    display:flex; align-items:center; gap:.5rem; margin-top:.5rem;
+    font-size:.7rem; color:var(--faint); font-variant-numeric:tabular-nums;
+  }
+  .pill{
+    display:inline-flex; align-items:center; gap:.32rem;
+    font-size:.66rem; font-weight:600; letter-spacing:.02em; text-transform:lowercase;
+  }
+  .pill.saving{color:var(--muted)}
+  .pill.filed{color:var(--ok)}
+  .pill.queued{color:var(--warn)}
+  .pill .led{width:5px; height:5px; border-radius:50%; background:currentColor}
+  .pill.saving .led{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.3} 50%{opacity:1}}
+  .retry{
+    background:none; border:none; color:var(--warn); cursor:pointer;
+    font-family:var(--ui); font-size:.7rem; font-weight:600; padding:0; text-decoration:underline;
+  }
+
+  /* ── composer ─────────────────────────── */
+  .composer{
+    border-top:1px solid var(--line); padding:.85rem 1rem 1rem;
+    background:linear-gradient(180deg,transparent,var(--bg-2));
+  }
+  .field{
+    position:relative; background:var(--surface); border:1px solid var(--line);
+    border-radius:16px; padding:.2rem .25rem .2rem; transition:border-color .2s;
+  }
+  .field:focus-within{border-color:var(--accent-dim)}
+  textarea{
+    width:100%; resize:none; border:none; background:none; color:var(--ink);
+    font-family:var(--mono); font-size:1rem; line-height:1.55; padding:.7rem .8rem .2rem;
+    max-height:42vh; outline:none; caret-color:var(--accent);
+  }
+  textarea::placeholder{color:var(--faint)}
+  .bar{display:flex; align-items:center; gap:.6rem; padding:.15rem .6rem .35rem .8rem}
+  .hint{font-size:.68rem; color:var(--faint); font-family:var(--mono)}
+  .send{
+    margin-left:auto; display:inline-flex; align-items:center; gap:.4rem;
+    background:var(--accent); color:#1a1206; border:none; border-radius:11px;
+    font-family:var(--ui); font-weight:700; font-size:.86rem; letter-spacing:-.01em;
+    padding:.5rem .9rem; cursor:pointer; transition:transform .1s, opacity .2s;
+  }
+  .send:active{transform:scale(.97)}
+  .send:disabled{opacity:.4; cursor:default}
+  .send:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+
+  /* ── settings sheet ───────────────────── */
+  .scrim{
+    position:fixed; inset:0; background:rgba(4,8,7,.6); backdrop-filter:blur(3px);
+    opacity:0; pointer-events:none; transition:opacity .22s; z-index:10;
+  }
+  .scrim.open{opacity:1; pointer-events:auto}
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:11;
+    background:var(--bg-2); border-top:1px solid var(--line);
+    border-radius:20px 20px 0 0; padding:1.1rem 1.25rem calc(1.4rem + env(safe-area-inset-bottom));
+    max-width:680px; margin:0 auto;
+    transform:translateY(100%); transition:transform .26s cubic-bezier(.2,.7,.3,1);
+  }
+  .sheet.open{transform:none}
+  .sheet h2{margin:.2rem 0 1rem; font-size:1.02rem; font-weight:700; letter-spacing:-.01em}
+  .sheet label{display:block; font-size:.74rem; color:var(--muted); margin:.9rem 0 .3rem; font-weight:600}
+  .sheet input{
+    width:100%; background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    color:var(--ink); font-family:var(--mono); font-size:.86rem; padding:.6rem .7rem; outline:none;
+  }
+  .sheet input:focus{border-color:var(--accent-dim)}
+  .row{display:flex; gap:.6rem; align-items:center; margin-top:1.2rem}
+  .test{
+    background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; font-family:var(--ui); font-weight:600; font-size:.82rem;
+    padding:.6rem .9rem; cursor:pointer;
+  }
+  .save{
+    margin-left:auto; background:var(--accent); color:#1a1206; border:none; border-radius:10px;
+    font-family:var(--ui); font-weight:700; font-size:.86rem; padding:.6rem 1.1rem; cursor:pointer;
+  }
+  .test:focus-visible,.save:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .test-result{font-size:.74rem; margin-top:.7rem; font-family:var(--mono); min-height:1em}
+  .test-result.ok{color:var(--ok)}
+  .test-result.bad{color:var(--warn)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important; transition:none !important}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="mark">inbox</span>
+      <span class="target" id="target">00 Inbox.md</span>
+      <span class="status">
+        <span class="dot" id="dot"></span>
+        <span class="status-txt" id="statusTxt">—</span>
+      </span>
+      <button class="gear" id="gearBtn" aria-label="Settings">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+
+    <div class="stream" id="stream"></div>
+
+    <div class="composer">
+      <div class="field">
+        <textarea id="input" rows="1" placeholder="write a thought…" autocomplete="off" autocapitalize="sentences"></textarea>
+        <div class="bar">
+          <span class="hint" id="hint">⌘↵ to capture</span>
+          <button class="send" id="sendBtn" disabled>capture
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Settings">
+    <h2>Connection</h2>
+    <label for="cfgUrl">Backend URL</label>
+    <input id="cfgUrl" inputmode="url" placeholder="https://your-service-xxxx.run.app" />
+    <label for="cfgToken">Capture token</label>
+    <input id="cfgToken" type="password" placeholder="the shared secret your backend expects" />
+    <label for="cfgTarget">Target note</label>
+    <input id="cfgTarget" placeholder="AutomatedNotes/00 Inbox.md" />
+    <div class="test-result" id="testResult"></div>
+    <div class="row">
+      <button class="test" id="testBtn">Test connection</button>
+      <button class="save" id="saveBtn">Save</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  const LS = {
+    get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+    set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  };
+  const $ = id => document.getElementById(id);
+
+  let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md" });
+  let queue = LS.get("inbox.queue", []);        // captures awaiting the backend
+  let session = [];                              // what we show this session
+  let lastOk = null;
+
+  const stream=$("stream"), input=$("input"), sendBtn=$("sendBtn"),
+        dot=$("dot"), statusTxt=$("statusTxt"), targetEl=$("target");
+
+  // ── rendering ──────────────────────────
+  function fmtTime(ts){
+    return new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }
+  function render(){
+    targetEl.textContent = (cfg.target||"00 Inbox.md").split("/").pop();
+    if(!session.length){
+      stream.innerHTML =
+        '<div class="empty"><span class="glyph">⌗</span>'+
+        '<p>Nothing captured yet. Write a thought and it lands in your inbox.</p></div>';
+      return;
+    }
+    stream.innerHTML = "";
+    for(const n of session){
+      const el=document.createElement("div"); el.className="note";
+      const t=document.createElement("div"); t.className="text"; t.textContent=n.text;
+      const m=document.createElement("div"); m.className="meta";
+      const time=document.createElement("span"); time.textContent=fmtTime(n.ts);
+      const pill=document.createElement("span"); pill.className="pill "+n.status;
+      const label={saving:"saving",filed:"filed",queued:"queued"}[n.status]||n.status;
+      pill.innerHTML='<span class="led"></span>'+label;
+      m.append(time, pill);
+      if(n.status==="queued"){
+        const r=document.createElement("button"); r.className="retry"; r.textContent="retry";
+        r.onclick=()=>flush(true); m.append(r);
+      }
+      el.append(t,m); stream.append(el);
+    }
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  function setConn(state){ // "online" | "offline" | null
+    dot.className="dot"+(state?" "+state:"");
+    if(state==="online") statusTxt.textContent = queue.length? queue.length+" queued" : "synced";
+    else if(state==="offline") statusTxt.textContent = queue.length? queue.length+" queued" : "offline";
+    else statusTxt.textContent = "—";
+  }
+
+  // ── capture flow ───────────────────────
+  function capture(){
+    const text=input.value.trim();
+    if(!text) return;
+    const item={ id:Date.now()+""+Math.random().toString(36).slice(2,6), text, ts:Date.now(), status:"saving" };
+    session.push(item);
+    input.value=""; autosize(); sendBtn.disabled=true; render();
+    send(item);
+  }
+
+  async function send(item){
+    if(!cfg.url){ markQueued(item); openSheet(); return; }
+    try{
+      const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
+        body:JSON.stringify({ text:item.text, ts:new Date(item.ts).toISOString(), target:cfg.target })
+      });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      item.status="filed"; lastOk=Date.now(); setConn("online"); render();
+    }catch(e){
+      markQueued(item);
+    }
+  }
+
+  function markQueued(item){
+    item.status="queued";
+    if(!queue.find(q=>q.id===item.id)) queue.push({id:item.id, text:item.text, ts:item.ts});
+    LS.set("inbox.queue", queue);
+    setConn(navigator.onLine? "online":"offline");
+    render();
+  }
+
+  // resend everything in the queue; called on load, reconnect, manual retry
+  async function flush(force){
+    if(!cfg.url || (!navigator.onLine && !force) || !queue.length) return;
+    const pending=[...queue];
+    for(const q of pending){
+      try{
+        const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
+          body:JSON.stringify({ text:q.text, ts:new Date(q.ts).toISOString(), target:cfg.target })
+        });
+        if(!res.ok) throw new Error("HTTP "+res.status);
+        queue=queue.filter(x=>x.id!==q.id);
+        LS.set("inbox.queue", queue);
+        const s=session.find(x=>x.id===q.id); if(s){ s.status="filed"; }
+        lastOk=Date.now();
+      }catch(e){ break; } // stop on first failure, keep order
+    }
+    setConn(navigator.onLine? "online":"offline");
+    render();
+  }
+
+  // ── composer behaviour ─────────────────
+  function autosize(){ input.style.height="auto"; input.style.height=Math.min(input.scrollHeight, window.innerHeight*0.42)+"px"; }
+  input.addEventListener("input",()=>{ autosize(); sendBtn.disabled=!input.value.trim(); });
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter" && (e.metaKey||e.ctrlKey)){ e.preventDefault(); capture(); }
+  });
+  sendBtn.addEventListener("click",capture);
+
+  // ── settings sheet ─────────────────────
+  const scrim=$("scrim"), sheet=$("sheet");
+  function openSheet(){
+    $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
+    $("cfgTarget").value=cfg.target||"AutomatedNotes/00 Inbox.md";
+    $("testResult").textContent=""; $("testResult").className="test-result";
+    scrim.classList.add("open"); sheet.classList.add("open");
+  }
+  function closeSheet(){ scrim.classList.remove("open"); sheet.classList.remove("open"); }
+  $("gearBtn").addEventListener("click",openSheet);
+  scrim.addEventListener("click",closeSheet);
+  $("saveBtn").addEventListener("click",()=>{
+    cfg={ url:$("cfgUrl").value.trim(), token:$("cfgToken").value, target:$("cfgTarget").value.trim()||"AutomatedNotes/00 Inbox.md" };
+    LS.set("inbox.cfg", cfg); closeSheet(); render(); flush(true);
+  });
+  $("testBtn").addEventListener("click",async()=>{
+    const url=$("cfgUrl").value.trim(); const out=$("testResult");
+    if(!url){ out.className="test-result bad"; out.textContent="enter a backend URL first"; return; }
+    out.className="test-result"; out.textContent="checking…";
+    try{
+      const r=await fetch(url.replace(/\/+$/,"")+"/health",{method:"GET"});
+      if(r.ok){ out.className="test-result ok"; out.textContent="reachable ✓"; }
+      else{ out.className="test-result bad"; out.textContent="responded "+r.status; }
+    }catch(e){ out.className="test-result bad"; out.textContent="could not reach service"; }
+  });
+
+  // ── connectivity ───────────────────────
+  window.addEventListener("online",()=>{ setConn("online"); flush(); });
+  window.addEventListener("offline",()=>setConn("offline"));
+
+  // ── boot ───────────────────────────────
+  // restore queued items into the session view so nothing feels lost
+  for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
+  setConn(navigator.onLine? "online":"offline");
+  render(); autosize();
+  if(!cfg.url) setTimeout(openSheet, 350);
+  flush();
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
