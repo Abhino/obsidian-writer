@@ -56,6 +56,33 @@
   .gear:hover{color:var(--muted)}
   .gear:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
+  /* ── pinned notes ─────────────────────── */
+  .pins{
+    display:flex; gap:.5rem; overflow-x:auto; padding:.7rem 1.25rem;
+    border-bottom:1px solid var(--line); scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pins::-webkit-scrollbar{display:none}
+  .pins:empty{display:none}
+  .chip{
+    flex:none; display:inline-flex; align-items:center; gap:.4rem;
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    color:var(--ink); font-family:var(--ui); font-size:.82rem; font-weight:600;
+    padding:.4rem .8rem .4rem .65rem; cursor:pointer; user-select:none;
+    -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
+    transition:transform .1s, border-color .15s; max-width:60vw;
+  }
+  .chip:active{transform:scale(.96)}
+  .chip:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .chip .obs{color:var(--accent); flex:none; display:flex}
+  .chip .lbl{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .chip.editing{border-color:var(--accent-dim); animation:wiggle .35s ease-in-out infinite}
+  @keyframes wiggle{0%,100%{transform:rotate(-.6deg)} 50%{transform:rotate(.6deg)}}
+  .chip.add{
+    background:none; border-style:dashed; color:var(--muted); font-weight:500;
+  }
+  .chip.add:hover{color:var(--ink); border-color:var(--accent-dim)}
+
   /* ── stream ───────────────────────────── */
   .stream{
     flex:1; min-height:0; overflow-y:auto; padding:1.1rem 1.25rem .5rem;
@@ -179,6 +206,8 @@
       </button>
     </header>
 
+    <div class="pins" id="pins"></div>
+
     <div class="stream" id="stream"></div>
 
     <div class="composer">
@@ -203,10 +232,24 @@
     <input id="cfgToken" type="password" placeholder="the shared secret your backend expects" />
     <label for="cfgTarget">Target note</label>
     <input id="cfgTarget" placeholder="AutomatedNotes/00 Inbox.md" />
+    <label for="cfgVault">Obsidian vault name</label>
+    <input id="cfgVault" placeholder="exact vault name, for Open-in-Obsidian" />
     <div class="test-result" id="testResult"></div>
     <div class="row">
       <button class="test" id="testBtn">Test connection</button>
       <button class="save" id="saveBtn">Save</button>
+    </div>
+  </div>
+
+  <div class="sheet" id="pinSheet" role="dialog" aria-label="Pin a note">
+    <h2 id="pinSheetTitle">Pin a note</h2>
+    <label for="pinLabel">Button label</label>
+    <input id="pinLabel" placeholder="e.g. Goals" />
+    <label for="pinFile">Note path from vault root</label>
+    <input id="pinFile" placeholder="e.g. Areas/Goals.md" />
+    <div class="row">
+      <button class="test" id="pinDeleteBtn" style="display:none; color:var(--warn)">Remove</button>
+      <button class="save" id="pinSaveBtn">Save pin</button>
     </div>
   </div>
 
@@ -219,13 +262,59 @@
   };
   const $ = id => document.getElementById(id);
 
-  let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md" });
+  let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md", vault:"" });
   let queue = LS.get("inbox.queue", []);        // captures awaiting the backend
+  let pins = LS.get("inbox.pins", []);          // [{id, label, file}]
   let session = [];                              // what we show this session
+  let pinEditMode = false;                        // wiggle / tap-to-edit
   let lastOk = null;
 
   const stream=$("stream"), input=$("input"), sendBtn=$("sendBtn"),
-        dot=$("dot"), statusTxt=$("statusTxt"), targetEl=$("target");
+        dot=$("dot"), statusTxt=$("statusTxt"), targetEl=$("target"), pinsEl=$("pins");
+
+  // ── pinned notes ───────────────────────
+  function encPath(p){
+    // encode each segment, keep slashes as %2F per Obsidian URI rules
+    return p.split("/").map(encodeURIComponent).join("%2F");
+  }
+  function openInObsidian(file){
+    if(!cfg.vault){ openSheet(); return; }      // need a vault name first
+    const url = "obsidian://open?vault=" + encodeURIComponent(cfg.vault) +
+                "&file=" + encPath(file.replace(/\.md$/,""));
+    // a user-gesture navigation hands the obsidian:// link to the OS
+    window.location.href = url;
+  }
+  function renderPins(){
+    pinsEl.innerHTML = "";
+    for(const p of pins){
+      const chip=document.createElement("button");
+      chip.className="chip"+(pinEditMode?" editing":"");
+      chip.innerHTML =
+        '<span class="obs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" '+
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+        '<path d="M5 3v16l7-4 7 4V3z"/></svg></span>'+
+        '<span class="lbl"></span>';
+      chip.querySelector(".lbl").textContent = p.label;
+      // tap: open (or edit, if in edit mode); long-press: enter edit + open editor
+      let timer=null, longed=false;
+      const start=()=>{ longed=false; timer=setTimeout(()=>{ longed=true; openPinSheet(p); }, 500); };
+      const cancel=()=>{ if(timer) clearTimeout(timer); };
+      chip.addEventListener("pointerdown", start);
+      chip.addEventListener("pointerup", cancel);
+      chip.addEventListener("pointerleave", cancel);
+      chip.addEventListener("click", ()=>{
+        if(longed) return;                  // long-press already handled it
+        if(pinEditMode) openPinSheet(p);     // edit mode: tap edits
+        else openInObsidian(p.file);         // normal: tap opens Obsidian
+      });
+      pinsEl.append(chip);
+    }
+    const add=document.createElement("button");
+    add.className="chip add";
+    add.innerHTML='<span class="obs">+</span><span class="lbl">pin a note</span>';
+    add.addEventListener("click", ()=>openPinSheet(null));
+    pinsEl.append(add);
+  }
 
   // ── rendering ──────────────────────────
   function fmtTime(ts){
@@ -329,19 +418,29 @@
   sendBtn.addEventListener("click",capture);
 
   // ── settings sheet ─────────────────────
-  const scrim=$("scrim"), sheet=$("sheet");
+  const scrim=$("scrim"), sheet=$("sheet"), pinSheet=$("pinSheet");
   function openSheet(){
+    pinSheet.classList.remove("open");
     $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
     $("cfgTarget").value=cfg.target||"AutomatedNotes/00 Inbox.md";
+    $("cfgVault").value=cfg.vault||"";
     $("testResult").textContent=""; $("testResult").className="test-result";
     scrim.classList.add("open"); sheet.classList.add("open");
   }
-  function closeSheet(){ scrim.classList.remove("open"); sheet.classList.remove("open"); }
+  function closeSheet(){
+    scrim.classList.remove("open"); sheet.classList.remove("open"); pinSheet.classList.remove("open");
+    if(pinEditMode){ pinEditMode=false; renderPins(); }
+  }
   $("gearBtn").addEventListener("click",openSheet);
   scrim.addEventListener("click",closeSheet);
   $("saveBtn").addEventListener("click",()=>{
-    cfg={ url:$("cfgUrl").value.trim(), token:$("cfgToken").value, target:$("cfgTarget").value.trim()||"AutomatedNotes/00 Inbox.md" };
-    LS.set("inbox.cfg", cfg); closeSheet(); render(); flush(true);
+    cfg={
+      url:$("cfgUrl").value.trim(),
+      token:$("cfgToken").value,
+      target:$("cfgTarget").value.trim()||"AutomatedNotes/00 Inbox.md",
+      vault:$("cfgVault").value.trim()
+    };
+    LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins(); flush(true);
   });
   $("testBtn").addEventListener("click",async()=>{
     const url=$("cfgUrl").value.trim(); const out=$("testResult");
@@ -354,6 +453,35 @@
     }catch(e){ out.className="test-result bad"; out.textContent="could not reach service"; }
   });
 
+  // ── pin sheet (add / edit / remove) ────
+  let editingPin = null;
+  function openPinSheet(pin){
+    sheet.classList.remove("open");
+    editingPin = pin;
+    $("pinSheetTitle").textContent = pin ? "Edit pin" : "Pin a note";
+    $("pinLabel").value = pin ? pin.label : "";
+    $("pinFile").value  = pin ? pin.file  : "";
+    $("pinDeleteBtn").style.display = pin ? "" : "none";
+    scrim.classList.add("open"); pinSheet.classList.add("open");
+    if(!pin) setTimeout(()=>$("pinLabel").focus(), 80);
+  }
+  $("pinSaveBtn").addEventListener("click",()=>{
+    const label=$("pinLabel").value.trim();
+    const file=$("pinFile").value.trim();
+    if(!label || !file) return;
+    if(editingPin){
+      editingPin.label=label; editingPin.file=file;
+    }else{
+      pins.push({ id:Date.now()+""+Math.random().toString(36).slice(2,5), label, file });
+    }
+    LS.set("inbox.pins", pins);
+    pinEditMode=false; closeSheet(); renderPins();
+  });
+  $("pinDeleteBtn").addEventListener("click",()=>{
+    if(editingPin){ pins=pins.filter(p=>p!==editingPin); LS.set("inbox.pins", pins); }
+    pinEditMode=false; closeSheet(); renderPins();
+  });
+
   // ── connectivity ───────────────────────
   window.addEventListener("online",()=>{ setConn("online"); flush(); });
   window.addEventListener("offline",()=>setConn("offline"));
@@ -362,7 +490,7 @@
   // restore queued items into the session view so nothing feels lost
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
-  render(); autosize();
+  render(); renderPins(); autosize();
   if(!cfg.url) setTimeout(openSheet, 350);
   flush();
 
