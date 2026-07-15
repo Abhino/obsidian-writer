@@ -187,6 +187,102 @@
   .test-result.ok{color:var(--ok)}
   .test-result.bad{color:var(--warn)}
 
+  /* ── tabs ─────────────────────────────── */
+  .tabs{display:flex; gap:.25rem; padding:.45rem 1.25rem 0; border-bottom:1px solid var(--line)}
+  .tab{
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    font-family:var(--ui); font-weight:600; font-size:.85rem;
+    padding:.45rem .8rem .55rem; border-bottom:2px solid transparent; margin-bottom:-1px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tab.active{color:var(--ink); border-bottom-color:var(--accent)}
+  .tab:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* ── today view ───────────────────────── */
+  .today{
+    flex:1; min-height:0; overflow-y:auto; padding:1rem 1.25rem 1.6rem;
+    display:flex; flex-direction:column; gap:.85rem;
+  }
+  .jobs{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center}
+  .job{
+    background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; font-family:var(--ui); font-weight:600; font-size:.8rem;
+    padding:.5rem .85rem; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .job:disabled{opacity:.45; cursor:default}
+  .job:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .job.icon{margin-left:auto; font-size:1.02rem; padding:.38rem .7rem; line-height:1}
+
+  .job-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:.75rem .9rem; font-size:.82rem; line-height:1.55;
+    animation:settle .3s cubic-bezier(.2,.7,.3,1);
+  }
+  .job-card .jc-title{font-weight:700; display:flex; align-items:center; gap:.5rem; margin-bottom:.15rem}
+  .job-card .jc-title .led{width:6px; height:6px; border-radius:50%; background:var(--muted); flex:none}
+  .job-card.running .jc-title .led{background:var(--accent); animation:pulse 1s ease-in-out infinite}
+  .job-card.ok .jc-title .led{background:var(--ok)}
+  .job-card.bad .jc-title .led{background:var(--warn)}
+  .job-card .jc-line{color:var(--muted)}
+  .job-card .jc-warn{color:var(--warn)}
+  .job-card a{color:var(--accent); text-decoration:none}
+  .job-card details{margin-top:.5rem}
+  .job-card summary{color:var(--faint); font-size:.72rem; cursor:pointer}
+  .job-card pre{
+    font-family:var(--mono); font-size:.68rem; color:var(--muted);
+    margin:.4rem 0 0; white-space:pre-wrap; word-break:break-word;
+  }
+
+  .tv-date{font-family:var(--mono); font-size:.73rem; color:var(--faint)}
+  .tv-section{
+    font-size:.7rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--faint); margin:.7rem 0 .1rem;
+  }
+  .task-row{
+    display:flex; align-items:flex-start; gap:.6rem; padding:.48rem 0;
+    border-bottom:1px solid var(--line); cursor:pointer; user-select:none;
+    -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .task-row:last-child{border-bottom:none}
+  .task-row .cb{
+    flex:none; width:19px; height:19px; border:1.5px solid var(--faint);
+    border-radius:6px; margin-top:.12rem; display:flex; align-items:center;
+    justify-content:center; color:transparent; transition:background .15s, border-color .15s;
+  }
+  .task-row.done .cb{background:var(--ok); border-color:var(--ok); color:#10231a}
+  .task-row.pending .cb{border-color:var(--accent); animation:pulse 1s ease-in-out infinite}
+  .task-row .tx{font-family:var(--mono); font-size:.86rem; line-height:1.5; word-break:break-word}
+  .task-row.done .tx{color:var(--faint); text-decoration:line-through}
+  .task-row.struct{cursor:default}
+  .task-row.struct .cb{visibility:hidden}
+  .task-row.struct .tx{color:var(--accent-dim); font-weight:600}
+  .badge{
+    display:inline-block; font-family:var(--mono); font-size:.62rem; color:var(--accent-dim);
+    border:1px solid var(--line); border-radius:6px; padding:0 .3rem; margin-left:.45rem;
+    vertical-align:1px;
+  }
+  .cal-line{
+    font-family:var(--mono); font-size:.8rem; color:var(--muted);
+    padding:.32rem 0; line-height:1.5; word-break:break-word;
+  }
+  .quote{
+    font-family:var(--mono); font-size:.8rem; color:var(--muted);
+    border-left:2px solid var(--accent-dim); padding:.15rem 0 .15rem .6rem; margin:.35rem 0 0;
+  }
+  .tv-empty{
+    margin:2.2rem 0; text-align:center; color:var(--faint);
+    display:flex; flex-direction:column; gap:.9rem; align-items:center;
+  }
+  .tv-empty p{margin:0; font-size:.92rem}
+  .toast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:calc(1.2rem + env(safe-area-inset-bottom));
+    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    font-size:.8rem; padding:.55rem .95rem; border-radius:10px; z-index:20;
+    opacity:0; transition:opacity .2s; pointer-events:none; max-width:88vw; text-align:center;
+  }
+  .toast.show{opacity:1}
+
   @media (prefers-reduced-motion:reduce){
     *{animation:none !important; transition:none !important}
   }
@@ -206,9 +302,25 @@
       </button>
     </header>
 
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab active" data-view="capture" role="tab">capture</button>
+      <button class="tab" data-view="today" role="tab">today</button>
+    </nav>
+
     <div class="pins" id="pins"></div>
 
     <div class="stream" id="stream"></div>
+
+    <div class="today" id="viewToday" hidden>
+      <div class="jobs">
+        <button class="job" id="jobDaily">build list</button>
+        <button class="job" id="jobTriage">triage</button>
+        <button class="job" id="jobResearch">research</button>
+        <button class="job icon" id="todayRefresh" aria-label="Refresh">↻</button>
+      </div>
+      <div class="job-card" id="jobCard" hidden></div>
+      <div id="todayBody"></div>
+    </div>
 
     <div class="composer">
       <div class="field">
@@ -252,6 +364,8 @@
       <button class="save" id="pinSaveBtn">Save pin</button>
     </div>
   </div>
+
+  <div class="toast" id="toast" role="status"></div>
 
 <script>
 (function(){
@@ -482,6 +596,264 @@
     pinEditMode=false; closeSheet(); renderPins();
   });
 
+  // ── backend api helper ─────────────────
+  function api(path, opts){
+    return fetch(cfg.url.replace(/\/+$/,"")+path, Object.assign({
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") }
+    }, opts||{}));
+  }
+  function el(tag, cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+
+  // ── toast ──────────────────────────────
+  const toast=$("toast"); let toastTimer=null;
+  function showToast(msg){
+    toast.textContent=msg; toast.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove("show"), 2600);
+  }
+
+  // ── views: capture ⇄ today ─────────────
+  const viewToday=$("viewToday"), todayBody=$("todayBody"),
+        composerEl=document.querySelector(".composer");
+  let curView="capture", todayData=null, todayFetchedAt=0;
+  const TODAY_STALE_MS=60000;
+
+  function switchView(v){
+    curView=v;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.view===v));
+    const cap = v==="capture";
+    pinsEl.style.display = cap? "" : "none";
+    stream.style.display = cap? "" : "none";
+    composerEl.style.display = cap? "" : "none";
+    viewToday.hidden = cap;
+    if(!cap && (!todayData || Date.now()-todayFetchedAt > TODAY_STALE_MS)) fetchToday();
+  }
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>switchView(t.dataset.view)));
+
+  // ── today view ─────────────────────────
+  async function fetchToday(){
+    if(!cfg.url){ openSheet(); return; }
+    todayBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading today…</p></div>';
+    try{
+      const r=await api("/today");
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      todayData=await r.json(); todayFetchedAt=Date.now();
+      renderToday();
+      lastOk=Date.now(); setConn("online");
+    }catch(e){
+      todayBody.innerHTML="";
+      const box=el("div","tv-empty");
+      const p=el("p"); p.textContent="couldn't load today's list";
+      const b=el("button","job"); b.textContent="retry"; b.addEventListener("click",fetchToday);
+      box.append(p,b); todayBody.append(box);
+    }
+  }
+
+  function fmtHint(m){
+    const h=Math.floor(m/60), r=m%60;
+    return "~"+(h&&r? h+"h"+r+"m" : h? h+"h" : r+"m");
+  }
+
+  function taskRow(n, depth){
+    const row=el("div","task-row"+(n.box? (n.checked?" done":"") : " struct"));
+    row.style.paddingLeft=(depth*1.1)+"rem";
+    const cb=el("span","cb");
+    cb.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    const tx=el("span","tx"); tx.textContent=n.text;
+    if(n.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(n.hint); tx.append(bd); }
+    row.append(cb,tx);
+    if(n.box) row.addEventListener("click",()=>toggleTask(row,n));
+    return row;
+  }
+
+  function renderToday(){
+    todayBody.innerHTML="";
+    const d=todayData;
+    if(!d) return;
+    if(!d.exists){
+      const box=el("div","tv-empty");
+      const g=el("span","glyph"); g.textContent="⌗";
+      const p=el("p"); p.textContent="no list yet for "+d.date;
+      const b=el("button","job"); b.textContent="build today's list";
+      b.addEventListener("click",()=>runJob("daily"));
+      box.append(g,p,b); todayBody.append(box);
+      return;
+    }
+    const dateEl=el("div","tv-date"); dateEl.textContent=d.date+" · "+d.path;
+    todayBody.append(dateEl);
+
+    const walk=(nodes,depth)=>{
+      for(const n of nodes||[]){
+        todayBody.append(taskRow(n,depth));
+        walk(n.children,depth+1);
+      }
+    };
+    walk(d.tasks,0);
+
+    const cal=d.calendar;
+    if(cal && cal.items && cal.items.length){
+      const h=el("div","tv-section"); h.textContent=cal.heading||"Calendar";
+      todayBody.append(h);
+      for(const it of cal.items){
+        if(it.box){
+          todayBody.append(taskRow({text:it.line, hint:it.hint, box:true,
+                                    checked:it.checked, children:[]}, it.indent?1:0));
+        }else{
+          const ln=el("div","cal-line");
+          ln.style.paddingLeft=(it.indent?1.1:0)+"rem";
+          ln.textContent=it.line; todayBody.append(ln);
+        }
+      }
+    }
+    for(const q of d.quotes||[]){
+      const b=el("div","quote"); b.textContent=q; todayBody.append(b);
+    }
+  }
+
+  // one flip in flight at a time keeps optimistic state trivially correct
+  let toggling=false;
+  async function toggleTask(row, n){
+    if(toggling) return;
+    const want=!n.checked;
+    toggling=true;
+    row.classList.add("pending"); row.classList.toggle("done", want);
+    try{
+      const r=await api("/check",{ method:"POST",
+        body:JSON.stringify({ date:todayData.date, text:n.text, checked:want }) });
+      if(r.status===404){
+        showToast("task changed in the vault — refreshing");
+        await fetchToday(); return;
+      }
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      todayData=await r.json(); todayFetchedAt=Date.now();
+      renderToday();                       // re-render from the server's truth
+    }catch(e){
+      row.classList.toggle("done", n.checked);   // revert the optimistic flip
+      showToast("couldn't update — check connection");
+    }finally{
+      toggling=false; row.classList.remove("pending");
+    }
+  }
+
+  // ── jobs: run-and-report ───────────────
+  const JOBS={
+    daily:    { label:"build list", path:"/daily" },
+    triage:   { label:"triage",     path:"/triage" },
+    research: { label:"research",   path:"/research" },
+  };
+  const jobCard=$("jobCard"),
+        jobBtns={ daily:$("jobDaily"), triage:$("jobTriage"), research:$("jobResearch") };
+  let jobRunning=false, jobTimer=null;
+
+  function setJobsDisabled(dis){
+    for(const k in jobBtns) jobBtns[k].disabled=dis;
+    $("todayRefresh").disabled=dis;
+  }
+
+  async function runJob(name){
+    if(jobRunning) return;
+    if(!cfg.url){ openSheet(); return; }
+    jobRunning=true; setJobsDisabled(true);
+    const started=Date.now();
+    jobCard.hidden=false; jobCard.className="job-card running";
+    jobCard.innerHTML='<div class="jc-title"><span class="led"></span><span id="jcT"></span></div>';
+    const tEl=$("jcT");
+    const tick=()=>{ tEl.textContent=JOBS[name].label+" running… "+Math.round((Date.now()-started)/1000)+"s"; };
+    tick(); jobTimer=setInterval(tick,1000);
+
+    let data=null, err=null;
+    try{
+      const r=await api(JOBS[name].path,{ method:"POST", body:"{}" });
+      data=await r.json().catch(()=>null);
+      if(!r.ok) err=(data && data.error) || ("HTTP "+r.status);
+      else if(!data) err="empty response";
+    }catch(e){ err="network error — the job may still be running on the server"; }
+    clearInterval(jobTimer);
+    jobRunning=false; setJobsDisabled(false);
+    renderJobCard(name, data, err, Math.round((Date.now()-started)/1000));
+    if(name==="daily" && !err) fetchToday();     // show what was just built
+  }
+
+  function renderJobCard(name, d, err, secs){
+    jobCard.hidden=false;
+    jobCard.className="job-card "+(err? "bad":"ok");
+    jobCard.innerHTML="";
+    const title=el("div","jc-title"); title.innerHTML='<span class="led"></span>';
+    const tt=el("span"); title.append(tt); jobCard.append(title);
+    const line=(txt,cls)=>{ const p=el("div",cls||"jc-line"); p.textContent=txt; jobCard.append(p); };
+
+    if(err){
+      tt.textContent=JOBS[name].label+" failed ("+secs+"s)";
+      line(String(err),"jc-warn");
+    }
+    else if(name==="daily"){
+      if(d.already){
+        tt.textContent="already built for today — no changes";
+      }else{
+        tt.textContent="built "+d.date+" · "+d.task_count+" tasks ("+secs+"s)";
+        line("rolled "+d.rolled_over+" · inbox "+d.from_inbox+"/"+d.inbox_offered
+             +" · recurring "+d.recurring_due+" · future "+d.from_future
+             +" · projects "+d.from_projects);
+        const s=d.selection||{};
+        if(s.status){
+          const sel="selection "+s.status+" — budget "+s.budget_minutes+"min, hard "
+                    +s.hard_cost_minutes+"min, picked "+s.picked+"/"+s.candidates;
+          line(sel, /applied/.test(s.status)? "jc-line":"jc-warn");
+        }
+        if(d.moved_out_of_old_sections)
+          line("moved "+d.moved_out_of_old_sections+" item(s) out of old sections");
+        if(d.prep_tasks || d.day_tasks)
+          line("prep "+(d.prep_tasks||0)+" task(s) on "+(d.prep_events||0)
+               +" event(s) · day tasks "+(d.day_tasks||0));
+        line("digest: "+(d.digest_status||"—"),
+             d.digest_sent? "jc-line":"jc-warn");
+        // status strip — anything disabled/failed surfaces in amber
+        for(const k of ["prep_status","recurring_status","weather_status"]){
+          const v=String(d[k]||"");
+          if(/disabled|failed|not found|unparse/i.test(v))
+            line(k.replace("_status","")+": "+v, "jc-warn");
+        }
+        if(d.recurring_unparsed)
+          line(d.recurring_unparsed+" recurring line(s) unparseable — check the note","jc-warn");
+      }
+    }
+    else if(name==="triage"){
+      tt.textContent="triage: "+d.examined+" examined ("+secs+"s)";
+      const routed=Object.entries(d.routed||{}).map(([k,v])=>v+" → "+k).join(" · ");
+      line(routed || "nothing routed");
+      line("kept as tasks "+d.kept_as_task+" · cleared "+d.cleared);
+    }
+    else if(name==="research"){
+      const done=(d.researched||[]).length;
+      tt.textContent="research: "+done+" done of "+d.queued+" queued ("+secs+"s)";
+      for(const r of d.researched||[]){
+        const row=el("div","jc-line");
+        const a=el("a"); a.href="#"; a.textContent="📄 "+r.topic;
+        a.addEventListener("click",(e)=>{ e.preventDefault(); openInObsidian(r.note); });
+        row.append(a); jobCard.append(row);
+      }
+      for(const r of d.skipped_fresh||[]) line("fresh, re-linked: "+r.topic);
+      for(const f of d.failed||[]) line("failed, left queued: "+f, "jc-warn");
+      if(/disabled/.test(d.ntfy||"")) line(d.ntfy,"jc-warn");
+    }
+
+    const det=el("details"), sum=el("summary"), pre=el("pre");
+    sum.textContent="raw response";
+    pre.textContent=JSON.stringify(d,null,2);
+    det.append(sum,pre); jobCard.append(det);
+  }
+
+  jobBtns.daily.addEventListener("click",()=>runJob("daily"));
+  jobBtns.triage.addEventListener("click",()=>runJob("triage"));
+  jobBtns.research.addEventListener("click",()=>runJob("research"));
+  $("todayRefresh").addEventListener("click",fetchToday);
+
+  // returning to the app with Today open → refresh if stale (e.g. after the
+  // morning digest's "Today view" button, or checking boxes in Obsidian)
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden && curView==="today"
+       && Date.now()-todayFetchedAt > TODAY_STALE_MS) fetchToday();
+  });
+
   // ── connectivity ───────────────────────
   window.addEventListener("online",()=>{ setConn("online"); flush(); });
   window.addEventListener("offline",()=>setConn("offline"));
@@ -491,6 +863,8 @@
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
   render(); renderPins(); autosize();
+  // #today deep link — the morning digest's "Today view" button lands here
+  if(location.hash==="#today" && cfg.url) switchView("today");
   if(!cfg.url) setTimeout(openSheet, 350);
   flush();
 

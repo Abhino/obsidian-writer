@@ -3,7 +3,7 @@
 // API calls to your backend are NEVER cached — they always hit the network
 // (and the app's own offline queue handles failures).
 
-const CACHE = "inbox-shell-v2";
+const CACHE = "inbox-shell-v3";
 const SHELL = [
   "./",
   "./index.html",
