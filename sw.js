@@ -1,9 +1,16 @@
 // Inbox PWA service worker.
 // Caches the app shell so the capture UI opens instantly and works offline.
 // API calls to your backend are NEVER cached — they always hit the network
-// (and the app's own offline queue handles failures).
+// (and the app's own offline queue handles failures). That matters more now
+// that /today, /context and /list all read live state: a cached response
+// would show a stale day or a stale errand list, which is exactly the
+// problem this app exists to avoid.
+//
+// BUMP `CACHE` ON EVERY index.html CHANGE. The shell is served cache-first,
+// so a stale version string means the phone keeps running the old app no
+// matter what was deployed.
 
-const CACHE = "inbox-shell-v3";
+const CACHE = "inbox-shell-v4";
 const SHELL = [
   "./",
   "./index.html",

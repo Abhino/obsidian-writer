@@ -167,6 +167,11 @@
   .sheet.open{transform:none}
   .sheet h2{margin:.2rem 0 1rem; font-size:1.02rem; font-weight:700; letter-spacing:-.01em}
   .sheet label{display:block; font-size:.74rem; color:var(--muted); margin:.9rem 0 .3rem; font-weight:600}
+  .sheet select{
+    width:100%; background:var(--surface-2); border:1px solid var(--line);
+    color:var(--ink); font:inherit; font-size:.86rem; padding:.6rem .7rem;
+    border-radius:9px; outline:none;
+  }
   .sheet input{
     width:100%; background:var(--surface); border:1px solid var(--line); border-radius:10px;
     color:var(--ink); font-family:var(--mono); font-size:.86rem; padding:.6rem .7rem; outline:none;
@@ -205,33 +210,12 @@
   }
   .jobs{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center}
   .job{
-    background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
-    border-radius:10px; font-family:var(--ui); font-weight:600; font-size:.8rem;
-    padding:.5rem .85rem; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+    font:inherit; font-size:.76rem; padding:.38rem .75rem; border-radius:8px; cursor:pointer;
   }
   .job:disabled{opacity:.45; cursor:default}
   .job:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   .job.icon{margin-left:auto; font-size:1.02rem; padding:.38rem .7rem; line-height:1}
-
-  .job-card{
-    background:var(--surface); border:1px solid var(--line); border-radius:14px;
-    padding:.75rem .9rem; font-size:.82rem; line-height:1.55;
-    animation:settle .3s cubic-bezier(.2,.7,.3,1);
-  }
-  .job-card .jc-title{font-weight:700; display:flex; align-items:center; gap:.5rem; margin-bottom:.15rem}
-  .job-card .jc-title .led{width:6px; height:6px; border-radius:50%; background:var(--muted); flex:none}
-  .job-card.running .jc-title .led{background:var(--accent); animation:pulse 1s ease-in-out infinite}
-  .job-card.ok .jc-title .led{background:var(--ok)}
-  .job-card.bad .jc-title .led{background:var(--warn)}
-  .job-card .jc-line{color:var(--muted)}
-  .job-card .jc-warn{color:var(--warn)}
-  .job-card a{color:var(--accent); text-decoration:none}
-  .job-card details{margin-top:.5rem}
-  .job-card summary{color:var(--faint); font-size:.72rem; cursor:pointer}
-  .job-card pre{
-    font-family:var(--mono); font-size:.68rem; color:var(--muted);
-    margin:.4rem 0 0; white-space:pre-wrap; word-break:break-word;
-  }
 
   .tv-date{font-family:var(--mono); font-size:.73rem; color:var(--faint)}
   .tv-section{
@@ -264,11 +248,27 @@
   .cal-line{
     font-family:var(--mono); font-size:.8rem; color:var(--muted);
     padding:.32rem 0; line-height:1.5; word-break:break-word;
+    display:flex; gap:.55rem; align-items:baseline;
   }
-  .quote{
-    font-family:var(--mono); font-size:.8rem; color:var(--muted);
-    border-left:2px solid var(--accent-dim); padding:.15rem 0 .15rem .6rem; margin:.35rem 0 0;
+  .cal-line .when{color:var(--accent-dim); font-weight:600; flex:none}
+  .cal-line .where{color:var(--faint); font-size:.72rem}
+  /* live context from /context — never stored in the vault */
+  .ctx{
+    display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
+    font-family:var(--mono); font-size:.72rem; color:var(--muted);
+    padding:.5rem .7rem; background:var(--surface-2);
+    border:1px solid var(--line); border-radius:10px;
   }
+  .ctx .sep{color:var(--faint)}
+  .ctx.stale{color:var(--faint)}
+  .blk-head{
+    display:flex; align-items:baseline; gap:.5rem;
+    font-size:.7rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--faint); margin:1rem 0 .1rem;
+  }
+  .blk-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
+                  text-transform:none; color:var(--accent-dim)}
+  .blk-head.now{color:var(--accent)}
   .tv-empty{
     margin:2.2rem 0; text-align:center; color:var(--faint);
     display:flex; flex-direction:column; gap:.9rem; align-items:center;
@@ -281,7 +281,19 @@
     font-size:.8rem; padding:.55rem .95rem; border-radius:10px; z-index:20;
     opacity:0; transition:opacity .2s; pointer-events:none; max-width:88vw; text-align:center;
   }
-  .toast.show{opacity:1}
+  .toast.show{opacity:1; pointer-events:auto}
+  .toast .undo{
+    background:none; border:none; color:var(--accent); font:inherit; font-weight:700;
+    margin-left:.7rem; cursor:pointer; padding:0;
+  }
+  /* compose target switch — inbox vs the standing errand list */
+  .targets{display:flex; gap:.3rem; margin-right:auto}
+  .targets button{
+    background:none; border:1px solid transparent; color:var(--faint);
+    font:inherit; font-size:.68rem; font-family:var(--mono);
+    padding:.15rem .45rem; border-radius:6px; cursor:pointer;
+  }
+  .targets button.on{color:var(--accent); border-color:var(--accent-dim)}
 
   @media (prefers-reduced-motion:reduce){
     *{animation:none !important; transition:none !important}
@@ -305,6 +317,7 @@
     <nav class="tabs" id="tabs" role="tablist">
       <button class="tab active" data-view="capture" role="tab">capture</button>
       <button class="tab" data-view="today" role="tab">today</button>
+      <button class="tab" data-view="outside" role="tab">outside</button>
     </nav>
 
     <div class="pins" id="pins"></div>
@@ -313,20 +326,27 @@
 
     <div class="today" id="viewToday" hidden>
       <div class="jobs">
-        <button class="job" id="jobDaily">build list</button>
-        <button class="job" id="jobTriage">triage</button>
-        <button class="job" id="jobResearch">research</button>
         <button class="job icon" id="todayRefresh" aria-label="Refresh">↻</button>
       </div>
-      <div class="job-card" id="jobCard" hidden></div>
       <div id="todayBody"></div>
+    </div>
+
+    <div class="today" id="viewOutside" hidden>
+      <div class="jobs">
+        <button class="job icon" id="outsideRefresh" aria-label="Refresh">↻</button>
+      </div>
+      <div id="outsideBody"></div>
     </div>
 
     <div class="composer">
       <div class="field">
         <textarea id="input" rows="1" placeholder="write a thought…" autocomplete="off" autocapitalize="sentences"></textarea>
         <div class="bar">
-          <span class="hint" id="hint">⌘↵ to capture</span>
+          <div class="targets" id="targets">
+            <button data-t="inbox" class="on">inbox</button>
+            <button data-t="outside">outside</button>
+          </div>
+          <span class="hint" id="hint">⌘↵</span>
           <button class="send" id="sendBtn" disabled>capture
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
@@ -342,8 +362,10 @@
     <input id="cfgUrl" inputmode="url" placeholder="https://your-service-xxxx.run.app" />
     <label for="cfgToken">Capture token</label>
     <input id="cfgToken" type="password" placeholder="the shared secret your backend expects" />
-    <label for="cfgTarget">Target note</label>
+    <label for="cfgTarget">Inbox note</label>
     <input id="cfgTarget" placeholder="AutomatedNotes/00 Inbox.md" />
+    <label for="cfgOutside">Outside list note</label>
+    <input id="cfgOutside" placeholder="outside-list.md" />
     <label for="cfgVault">Obsidian vault name</label>
     <input id="cfgVault" placeholder="exact vault name, for Open-in-Obsidian" />
     <div class="test-result" id="testResult"></div>
@@ -359,6 +381,11 @@
     <input id="pinLabel" placeholder="e.g. Goals" />
     <label for="pinFile">Note path from vault root</label>
     <input id="pinFile" placeholder="e.g. Areas/Goals.md" />
+    <label for="pinMode">Opens as</label>
+    <select id="pinMode">
+      <option value="link">Obsidian link — needs the vault to have synced</option>
+      <option value="list">Live list — reads through the backend, tappable</option>
+    </select>
     <div class="row">
       <button class="test" id="pinDeleteBtn" style="display:none; color:var(--warn)">Remove</button>
       <button class="save" id="pinSaveBtn">Save pin</button>
@@ -376,9 +403,13 @@
   };
   const $ = id => document.getElementById(id);
 
-  let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md", vault:"" });
+  let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md",
+                                  outside:"outside-list.md", vault:"" });
+  // which note the composer writes to. /capture already accepts a target,
+  // so an errand needs no new endpoint — only somewhere to aim.
+  let composeTarget = LS.get("inbox.composeTarget", "inbox");
   let queue = LS.get("inbox.queue", []);        // captures awaiting the backend
-  let pins = LS.get("inbox.pins", []);          // [{id, label, file}]
+  let pins = LS.get("inbox.pins", []);          // [{id, label, file, mode}]
   let session = [];                              // what we show this session
   let pinEditMode = false;                        // wiggle / tap-to-edit
   let lastOk = null;
@@ -387,6 +418,21 @@
         dot=$("dot"), statusTxt=$("statusTxt"), targetEl=$("target"), pinsEl=$("pins");
 
   // ── pinned notes ───────────────────────
+  // the note the composer currently writes to
+  function targetPath(){
+    return composeTarget==="outside"
+      ? (cfg.outside||"outside-list.md")
+      : (cfg.target||"AutomatedNotes/00 Inbox.md");
+  }
+  function setComposeTarget(t){
+    composeTarget = t; LS.set("inbox.composeTarget", t);
+    document.querySelectorAll("#targets button")
+      .forEach(b=>b.classList.toggle("on", b.dataset.t===t));
+    targetEl.textContent = targetPath().split("/").pop();
+    input.placeholder = t==="outside" ? "an errand for when you're out…"
+                                      : "write a thought…";
+  }
+
   function encPath(p){
     // encode each segment, keep slashes as %2F per Obsidian URI rules
     return p.split("/").map(encodeURIComponent).join("%2F");
@@ -418,8 +464,11 @@
       chip.addEventListener("pointerleave", cancel);
       chip.addEventListener("click", ()=>{
         if(longed) return;                  // long-press already handled it
-        if(pinEditMode) openPinSheet(p);     // edit mode: tap edits
-        else openInObsidian(p.file);         // normal: tap opens Obsidian
+        if(pinEditMode){ openPinSheet(p); return; }
+        // a `list` pin renders live through the backend — the whole point,
+        // since mobile Obsidian shows a vault that hasn't synced
+        if(p.mode==="list") showList(p.file, p.label);
+        else openInObsidian(p.file);
       });
       pinsEl.append(chip);
     }
@@ -435,7 +484,7 @@
     return new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
   }
   function render(){
-    targetEl.textContent = (cfg.target||"00 Inbox.md").split("/").pop();
+    targetEl.textContent = targetPath().split("/").pop();
     if(!session.length){
       stream.innerHTML =
         '<div class="empty"><span class="glyph">⌗</span>'+
@@ -472,7 +521,8 @@
   function capture(){
     const text=input.value.trim();
     if(!text) return;
-    const item={ id:Date.now()+""+Math.random().toString(36).slice(2,6), text, ts:Date.now(), status:"saving" };
+    const item={ id:Date.now()+""+Math.random().toString(36).slice(2,6), text,
+                 ts:Date.now(), status:"saving", target:targetPath() };
     session.push(item);
     input.value=""; autosize(); sendBtn.disabled=true; render();
     send(item);
@@ -484,7 +534,7 @@
       const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
         method:"POST",
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
-        body:JSON.stringify({ text:item.text, ts:new Date(item.ts).toISOString(), target:cfg.target })
+        body:JSON.stringify({ text:item.text, ts:new Date(item.ts).toISOString(), target:item.target||cfg.target })
       });
       if(!res.ok) throw new Error("HTTP "+res.status);
       item.status="filed"; lastOk=Date.now(); setConn("online"); render();
@@ -510,7 +560,7 @@
         const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
           method:"POST",
           headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
-          body:JSON.stringify({ text:q.text, ts:new Date(q.ts).toISOString(), target:cfg.target })
+          body:JSON.stringify({ text:q.text, ts:new Date(q.ts).toISOString(), target:q.target||cfg.target })
         });
         if(!res.ok) throw new Error("HTTP "+res.status);
         queue=queue.filter(x=>x.id!==q.id);
@@ -537,6 +587,7 @@
     pinSheet.classList.remove("open");
     $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
     $("cfgTarget").value=cfg.target||"AutomatedNotes/00 Inbox.md";
+    $("cfgOutside").value=cfg.outside||"outside-list.md";
     $("cfgVault").value=cfg.vault||"";
     $("testResult").textContent=""; $("testResult").className="test-result";
     scrim.classList.add("open"); sheet.classList.add("open");
@@ -552,6 +603,7 @@
       url:$("cfgUrl").value.trim(),
       token:$("cfgToken").value,
       target:$("cfgTarget").value.trim()||"AutomatedNotes/00 Inbox.md",
+      outside:$("cfgOutside").value.trim()||"outside-list.md",
       vault:$("cfgVault").value.trim()
     };
     LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins(); flush(true);
@@ -575,6 +627,7 @@
     $("pinSheetTitle").textContent = pin ? "Edit pin" : "Pin a note";
     $("pinLabel").value = pin ? pin.label : "";
     $("pinFile").value  = pin ? pin.file  : "";
+    $("pinMode").value  = (pin && pin.mode) || "link";
     $("pinDeleteBtn").style.display = pin ? "" : "none";
     scrim.classList.add("open"); pinSheet.classList.add("open");
     if(!pin) setTimeout(()=>$("pinLabel").focus(), 80);
@@ -583,10 +636,11 @@
     const label=$("pinLabel").value.trim();
     const file=$("pinFile").value.trim();
     if(!label || !file) return;
+    const mode=$("pinMode").value==="list"?"list":"link";
     if(editingPin){
-      editingPin.label=label; editingPin.file=file;
+      editingPin.label=label; editingPin.file=file; editingPin.mode=mode;
     }else{
-      pins.push({ id:Date.now()+""+Math.random().toString(36).slice(2,5), label, file });
+      pins.push({ id:Date.now()+""+Math.random().toString(36).slice(2,5), label, file, mode });
     }
     LS.set("inbox.pins", pins);
     pinEditMode=false; closeSheet(); renderPins();
@@ -607,14 +661,16 @@
   // ── toast ──────────────────────────────
   const toast=$("toast"); let toastTimer=null;
   function showToast(msg){
-    toast.textContent=msg; toast.classList.add("show");
+    toast.innerHTML=""; toast.textContent=msg; toast.classList.add("show");
     clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove("show"), 2600);
   }
 
-  // ── views: capture ⇄ today ─────────────
+  // ── views: capture ⇄ today ⇄ outside ───
   const viewToday=$("viewToday"), todayBody=$("todayBody"),
+        viewOutside=$("viewOutside"), outsideBody=$("outsideBody"),
         composerEl=document.querySelector(".composer");
-  let curView="capture", todayData=null, todayFetchedAt=0;
+  let curView="capture", todayData=null, todayCtx=null, todayFetchedAt=0;
+  let listData=null, listPath=null, listLabel="outside";
   const TODAY_STALE_MS=60000;
 
   function switchView(v){
@@ -624,20 +680,26 @@
     pinsEl.style.display = cap? "" : "none";
     stream.style.display = cap? "" : "none";
     composerEl.style.display = cap? "" : "none";
-    viewToday.hidden = cap;
-    if(!cap && (!todayData || Date.now()-todayFetchedAt > TODAY_STALE_MS)) fetchToday();
+    viewToday.hidden = v!=="today";
+    viewOutside.hidden = v!=="outside";
+    if(v==="today" && (!todayData || Date.now()-todayFetchedAt > TODAY_STALE_MS)) fetchToday();
+    if(v==="outside" && !listData)
+      openList(listPath||cfg.outside||"outside-list.md", listLabel);
   }
   document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>switchView(t.dataset.view)));
 
   // ── today view ─────────────────────────
+  // /today and /context are fetched in PARALLEL and rendered independently.
+  // The month file holds the record; the calendar and forecast are live and
+  // never stored. A Calendar outage therefore costs the context strip, not
+  // the task list.
   async function fetchToday(){
     if(!cfg.url){ openSheet(); return; }
     todayBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading today…</p></div>';
+    const pToday=api("/today").then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+    const pCtx=api("/context").then(r=>r.ok? r.json():null).catch(()=>null);
     try{
-      const r=await api("/today");
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      todayData=await r.json(); todayFetchedAt=Date.now();
-      renderToday();
+      todayData=await pToday; todayFetchedAt=Date.now();
       lastOk=Date.now(); setConn("online");
     }catch(e){
       todayBody.innerHTML="";
@@ -645,7 +707,11 @@
       const p=el("p"); p.textContent="couldn't load today's list";
       const b=el("button","job"); b.textContent="retry"; b.addEventListener("click",fetchToday);
       box.append(p,b); todayBody.append(box);
+      return;
     }
+    renderToday();
+    todayCtx=await pCtx;                 // may be null; renderToday copes
+    renderToday();
   }
 
   function fmtHint(m){
@@ -653,7 +719,7 @@
     return "~"+(h&&r? h+"h"+r+"m" : h? h+"h" : r+"m");
   }
 
-  function taskRow(n, depth){
+  function taskRow(n, depth, onToggle){
     const row=el("div","task-row"+(n.box? (n.checked?" done":"") : " struct"));
     row.style.paddingLeft=(depth*1.1)+"rem";
     const cb=el("span","cb");
@@ -661,8 +727,31 @@
     const tx=el("span","tx"); tx.textContent=n.text;
     if(n.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(n.hint); tx.append(bd); }
     row.append(cb,tx);
-    if(n.box) row.addEventListener("click",()=>toggleTask(row,n));
+    if(n.box) row.addEventListener("click",()=>(onToggle||toggleTask)(row,n));
     return row;
+  }
+
+  function renderContext(){
+    if(!todayCtx) return;
+    const c=el("div","ctx");
+    const bits=[];
+    if(todayCtx.weather && todayCtx.weather.summary)
+      bits.push((todayCtx.weather.place? todayCtx.weather.place+" ":"")+todayCtx.weather.summary);
+    const evs=todayCtx.events||[];
+    bits.push(evs.length? evs.length+" event"+(evs.length===1?"":"s") : "no events");
+    bits.forEach((b,i)=>{
+      if(i){ const s=el("span","sep"); s.textContent="·"; c.append(s); }
+      const s=el("span"); s.textContent=b; c.append(s);
+    });
+    todayBody.append(c);
+    for(const ev of evs){
+      const ln=el("div","cal-line");
+      const w=el("span","when"); w.textContent=ev.all_day? "all day" : (ev.start||"");
+      const t=el("span"); t.textContent=ev.title;
+      ln.append(w,t);
+      if(ev.location){ const p=el("span","where"); p.textContent="📍 "+ev.location; ln.append(p); }
+      todayBody.append(ln);
+    }
   }
 
   function renderToday(){
@@ -670,42 +759,49 @@
     const d=todayData;
     if(!d) return;
     if(!d.exists){
+      renderContext();
       const box=el("div","tv-empty");
       const g=el("span","glyph"); g.textContent="⌗";
       const p=el("p"); p.textContent="no list yet for "+d.date;
-      const b=el("button","job"); b.textContent="build today's list";
-      b.addEventListener("click",()=>runJob("daily"));
-      box.append(g,p,b); todayBody.append(box);
+      box.append(g,p);
+      todayBody.append(box);
+      for(const n of d.done||[]) todayBody.append(taskRow(n,0,()=>{}));
       return;
     }
     const dateEl=el("div","tv-date"); dateEl.textContent=d.date+" · "+d.path;
     todayBody.append(dateEl);
+    renderContext();
 
+    // group by the `| Block` hint the scheduler stamped on each task. That
+    // replaces the old `#### Morning` subsections in the markdown — same
+    // plan, but the file stays a flat record.
+    const order=(todayCtx&&todayCtx.blocks? todayCtx.blocks.map(b=>b.name) : d.blocks||[]);
+    const spans={}; (todayCtx&&todayCtx.blocks||[]).forEach(b=>{spans[b.name]=b.start+"–"+b.end;});
+    const groups=new Map(); order.forEach(b=>groups.set(b,[]));
+    const loose=[];
+    for(const n of d.tasks||[]){
+      const b=n.block;
+      if(b && groups.has(b)) groups.get(b).push(n); else loose.push(n);
+    }
     const walk=(nodes,depth)=>{
       for(const n of nodes||[]){
         todayBody.append(taskRow(n,depth));
         walk(n.children,depth+1);
       }
     };
-    walk(d.tasks,0);
-
-    const cal=d.calendar;
-    if(cal && cal.items && cal.items.length){
-      const h=el("div","tv-section"); h.textContent=cal.heading||"Calendar";
+    for(const [name,nodes] of groups){
+      if(!nodes.length) continue;
+      const h=el("div","blk-head");
+      const t=el("span"); t.textContent=name; h.append(t);
+      if(spans[name]){ const s=el("span","span"); s.textContent=spans[name]; h.append(s); }
       todayBody.append(h);
-      for(const it of cal.items){
-        if(it.box){
-          todayBody.append(taskRow({text:it.line, hint:it.hint, box:true,
-                                    checked:it.checked, children:[]}, it.indent?1:0));
-        }else{
-          const ln=el("div","cal-line");
-          ln.style.paddingLeft=(it.indent?1.1:0)+"rem";
-          ln.textContent=it.line; todayBody.append(ln);
-        }
-      }
+      walk(nodes,0);
     }
-    for(const q of d.quotes||[]){
-      const b=el("div","quote"); b.textContent=q; todayBody.append(b);
+    if(loose.length){
+      if(groups.size && [...groups.values()].some(v=>v.length)){
+        const h=el("div","blk-head"); h.textContent="anytime"; todayBody.append(h);
+      }
+      walk(loose,0);
     }
   }
 
@@ -734,124 +830,107 @@
     }
   }
 
-  // ── jobs: run-and-report ───────────────
-  const JOBS={
-    daily:    { label:"build list", path:"/daily" },
-    triage:   { label:"triage",     path:"/triage" },
-    research: { label:"research",   path:"/research" },
-  };
-  const jobCard=$("jobCard"),
-        jobBtns={ daily:$("jobDaily"), triage:$("jobTriage"), research:$("jobResearch") };
-  let jobRunning=false, jobTimer=null;
-
-  function setJobsDisabled(dis){
-    for(const k in jobBtns) jobBtns[k].disabled=dis;
-    $("todayRefresh").disabled=dis;
-  }
-
-  async function runJob(name){
-    if(jobRunning) return;
-    if(!cfg.url){ openSheet(); return; }
-    jobRunning=true; setJobsDisabled(true);
-    const started=Date.now();
-    jobCard.hidden=false; jobCard.className="job-card running";
-    jobCard.innerHTML='<div class="jc-title"><span class="led"></span><span id="jcT"></span></div>';
-    const tEl=$("jcT");
-    const tick=()=>{ tEl.textContent=JOBS[name].label+" running… "+Math.round((Date.now()-started)/1000)+"s"; };
-    tick(); jobTimer=setInterval(tick,1000);
-
-    let data=null, err=null;
+  // ── outside list (and any `list` pin) ──
+  // Fetch + render only. Never switches views — switchView() calls this when
+  // the outside tab has no data, so switching from in here would recurse.
+  async function openList(path, label){
+    listPath=path; listLabel=label||path;
+    outsideBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading '+listLabel+'…</p></div>';
     try{
-      const r=await api(JOBS[name].path,{ method:"POST", body:"{}" });
-      data=await r.json().catch(()=>null);
-      if(!r.ok) err=(data && data.error) || ("HTTP "+r.status);
-      else if(!data) err="empty response";
-    }catch(e){ err="network error — the job may still be running on the server"; }
-    clearInterval(jobTimer);
-    jobRunning=false; setJobsDisabled(false);
-    renderJobCard(name, data, err, Math.round((Date.now()-started)/1000));
-    if(name==="daily" && !err) fetchToday();     // show what was just built
+      const r=await api("/list?path="+encodeURIComponent(path));
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      listData=await r.json();
+      renderList();
+      lastOk=Date.now(); setConn("online");
+    }catch(e){
+      outsideBody.innerHTML="";
+      const box=el("div","tv-empty");
+      const p=el("p"); p.textContent="couldn't load "+listLabel;
+      const b=el("button","job"); b.textContent="retry";
+      b.addEventListener("click",()=>openList(path,label));
+      box.append(p,b); outsideBody.append(box);
+    }
   }
 
-  function renderJobCard(name, d, err, secs){
-    jobCard.hidden=false;
-    jobCard.className="job-card "+(err? "bad":"ok");
-    jobCard.innerHTML="";
-    const title=el("div","jc-title"); title.innerHTML='<span class="led"></span>';
-    const tt=el("span"); title.append(tt); jobCard.append(title);
-    const line=(txt,cls)=>{ const p=el("div",cls||"jc-line"); p.textContent=txt; jobCard.append(p); };
-
-    if(err){
-      tt.textContent=JOBS[name].label+" failed ("+secs+"s)";
-      line(String(err),"jc-warn");
-    }
-    else if(name==="daily"){
-      if(d.already){
-        tt.textContent="already built for today — no changes";
-      }else{
-        tt.textContent="built "+d.date+" · "+d.task_count+" tasks ("+secs+"s)";
-        line("rolled "+d.rolled_over+" · inbox "+d.from_inbox+"/"+d.inbox_offered
-             +" · recurring "+d.recurring_due+" · future "+d.from_future
-             +" · projects "+d.from_projects);
-        const s=d.selection||{};
-        if(s.status){
-          const sel="selection "+s.status+" — budget "+s.budget_minutes+"min, hard "
-                    +s.hard_cost_minutes+"min, picked "+s.picked+"/"+s.candidates;
-          line(sel, /applied/.test(s.status)? "jc-line":"jc-warn");
-        }
-        if(d.moved_out_of_old_sections)
-          line("moved "+d.moved_out_of_old_sections+" item(s) out of old sections");
-        if(d.prep_tasks || d.day_tasks)
-          line("prep "+(d.prep_tasks||0)+" task(s) on "+(d.prep_events||0)
-               +" event(s) · day tasks "+(d.day_tasks||0));
-        line("digest: "+(d.digest_status||"—"),
-             d.digest_sent? "jc-line":"jc-warn");
-        // status strip — anything disabled/failed surfaces in amber
-        for(const k of ["prep_status","recurring_status","weather_status"]){
-          const v=String(d[k]||"");
-          if(/disabled|failed|not found|unparse/i.test(v))
-            line(k.replace("_status","")+": "+v, "jc-warn");
-        }
-        if(d.recurring_unparsed)
-          line(d.recurring_unparsed+" recurring line(s) unparseable — check the note","jc-warn");
-      }
-    }
-    else if(name==="triage"){
-      tt.textContent="triage: "+d.examined+" examined ("+secs+"s)";
-      const routed=Object.entries(d.routed||{}).map(([k,v])=>v+" → "+k).join(" · ");
-      line(routed || "nothing routed");
-      line("kept as tasks "+d.kept_as_task+" · cleared "+d.cleared);
-    }
-    else if(name==="research"){
-      const done=(d.researched||[]).length;
-      tt.textContent="research: "+done+" done of "+d.queued+" queued ("+secs+"s)";
-      for(const r of d.researched||[]){
-        const row=el("div","jc-line");
-        const a=el("a"); a.href="#"; a.textContent="📄 "+r.topic;
-        a.addEventListener("click",(e)=>{ e.preventDefault(); openInObsidian(r.note); });
-        row.append(a); jobCard.append(row);
-      }
-      for(const r of d.skipped_fresh||[]) line("fresh, re-linked: "+r.topic);
-      for(const f of d.failed||[]) line("failed, left queued: "+f, "jc-warn");
-      if(/disabled/.test(d.ntfy||"")) line(d.ntfy,"jc-warn");
-    }
-
-    const det=el("details"), sum=el("summary"), pre=el("pre");
-    sum.textContent="raw response";
-    pre.textContent=JSON.stringify(d,null,2);
-    det.append(sum,pre); jobCard.append(det);
+  // entry point for anything that wants the outside tab showing a specific
+  // note: point the view at it, then let switchView do the fetch
+  function showList(path, label){
+    if(path!==listPath) listData=null;
+    listPath=path; listLabel=label||path;
+    switchView("outside");
+    if(!listData) openList(listPath, listLabel);
   }
 
-  jobBtns.daily.addEventListener("click",()=>runJob("daily"));
-  jobBtns.triage.addEventListener("click",()=>runJob("triage"));
-  jobBtns.research.addEventListener("click",()=>runJob("research"));
+  function renderList(){
+    outsideBody.innerHTML="";
+    const d=listData;
+    if(!d) return;
+    const head=el("div","tv-date"); head.textContent=d.path;
+    outsideBody.append(head);
+    const items=(d.items||[]).filter(i=>!i.checked);
+    if(!items.length){
+      const box=el("div","tv-empty");
+      const g=el("span","glyph"); g.textContent="✓";
+      const p=el("p"); p.textContent=d.exists? "nothing on the list" : "no list note yet";
+      box.append(g,p); outsideBody.append(box);
+      return;
+    }
+    for(const n of items) outsideBody.append(taskRow(n,0,tickListItem));
+  }
+
+  // Ticking is a cross-file MOVE on the server: the line is deleted here and
+  // logged as done under today's section. So undo is a real inverse, not a
+  // checkbox flip — hence the 5s window rather than a second tap.
+  let ticking=false;
+  async function tickListItem(row, n){
+    if(ticking) return;
+    ticking=true; row.classList.add("pending","done");
+    try{
+      const r=await api("/list/check",{ method:"POST",
+        body:JSON.stringify({ path:listPath, text:n.text, checked:true }) });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      listData=await r.json();
+      renderList();
+      offerUndo(n.text);
+    }catch(e){
+      row.classList.remove("done");
+      showToast("couldn't update — check connection");
+    }finally{
+      ticking=false; row.classList.remove("pending");
+    }
+  }
+
+  function offerUndo(text){
+    toast.innerHTML="";
+    const s=el("span"); s.textContent="done · logged to today";
+    const b=el("button","undo"); b.textContent="undo";
+    b.addEventListener("click", async ()=>{
+      toast.classList.remove("show");
+      try{
+        const r=await api("/list/check",{ method:"POST",
+          body:JSON.stringify({ path:listPath, text, checked:false }) });
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        listData=await r.json(); renderList();
+        todayData=null;                 // the month file changed underneath
+      }catch(e){ showToast("couldn't undo"); }
+    });
+    toast.append(s,b); toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>toast.classList.remove("show"), 5000);
+  }
+
   $("todayRefresh").addEventListener("click",fetchToday);
+  $("outsideRefresh").addEventListener("click",
+    ()=>openList(listPath||cfg.outside||"outside-list.md", listLabel));
+  document.querySelectorAll("#targets button").forEach(b=>
+    b.addEventListener("click",()=>setComposeTarget(b.dataset.t)));
 
   // returning to the app with Today open → refresh if stale (e.g. after the
   // morning digest's "Today view" button, or checking boxes in Obsidian)
   document.addEventListener("visibilitychange",()=>{
-    if(!document.hidden && curView==="today"
-       && Date.now()-todayFetchedAt > TODAY_STALE_MS) fetchToday();
+    if(document.hidden) return;
+    if(curView==="today" && Date.now()-todayFetchedAt > TODAY_STALE_MS) fetchToday();
+    if(curView==="outside" && listPath) openList(listPath, listLabel);
   });
 
   // ── connectivity ───────────────────────
@@ -862,9 +941,10 @@
   // restore queued items into the session view so nothing feels lost
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
-  render(); renderPins(); autosize();
-  // #today deep link — the morning digest's "Today view" button lands here
+  render(); renderPins(); autosize(); setComposeTarget(composeTarget);
+  // #today deep link — /daily's 8am push lands here
   if(location.hash==="#today" && cfg.url) switchView("today");
+  if(location.hash==="#outside" && cfg.url) switchView("outside");
   if(!cfg.url) setTimeout(openSheet, 350);
   flush();
 
