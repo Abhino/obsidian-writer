@@ -295,6 +295,44 @@
   }
   .targets button.on{color:var(--accent); border-color:var(--accent-dim)}
 
+  /* ── shared view chrome: head, panels, footnote ── */
+  /* capture earns its calm from soft cards and generous space; the list
+     views now use the same vocabulary instead of naked rows. */
+  .vhead{display:flex; align-items:flex-start; gap:.6rem; padding-bottom:.2rem}
+  .vh-txt{flex:1; min-width:0}
+  .vh-title{font-size:1.28rem; font-weight:700; letter-spacing:-.025em; line-height:1.15}
+  .vh-meta{font-size:.74rem; color:var(--muted); margin-top:.15rem;
+           white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .vh-dot{width:9px; height:9px; border-radius:50%; background:var(--faint);
+          margin-top:.42rem; flex:none}
+  .vh-act{
+    flex:none; width:34px; height:34px; background:var(--surface-2);
+    border:1px solid var(--line); color:var(--muted); border-radius:10px;
+    font:inherit; font-size:1rem; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .vh-act:active{transform:scale(.95)}
+  .vh-act:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:.55rem .8rem;
+  }
+  .panel + .panel{margin-top:.6rem}
+  .panel-head{
+    display:flex; align-items:baseline; gap:.5rem; padding:.35rem 0 .45rem;
+    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--muted);
+  }
+  .panel-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
+                    text-transform:none; color:var(--faint)}
+  .panel-head .n{margin-left:auto; font-family:var(--mono); font-size:.68rem;
+                 letter-spacing:0; color:var(--faint); font-weight:500}
+  .panel-head.now{color:var(--accent)}
+  .vfoot{font-family:var(--mono); font-size:.64rem; color:var(--faint);
+         opacity:.65; text-align:center; padding:.9rem 0 .2rem}
+  .vhint{font-size:.72rem; color:var(--faint); text-align:center; padding:.8rem 0 .2rem}
+
   /* ── plan: Eisenhower matrix ──────────── */
   .qdot{flex:none; width:7px; height:7px; border-radius:50%; margin-top:.56rem;
         background:var(--faint)}
@@ -305,8 +343,8 @@
   .matrix{display:grid; grid-template-columns:1fr 1fr; gap:.6rem}
   .quad{
     background:var(--surface); border:1px solid var(--line); border-radius:14px;
-    padding:.65rem .75rem; cursor:pointer; min-height:100px; text-align:left;
-    font:inherit; color:var(--ink); display:flex; flex-direction:column; gap:.3rem;
+    padding:.7rem .8rem; cursor:pointer; min-height:104px; text-align:left;
+    font:inherit; color:var(--ink); display:flex; flex-direction:column; gap:.15rem;
     -webkit-tap-highlight-color:transparent;
   }
   .quad:active{transform:scale(.98)}
@@ -315,7 +353,7 @@
     font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
     color:var(--muted)}
   .quad .qh .qdot{margin-top:0}
-  .quad .cnt{font-family:var(--mono); font-size:1.3rem; color:var(--ink)}
+  .quad .cnt{font-family:var(--mono); font-size:1.45rem; line-height:1.1; color:var(--ink)}
   .quad .peek{font-family:var(--mono); font-size:.68rem; color:var(--faint);
     line-height:1.45; overflow:hidden; display:-webkit-box;
     -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word}
@@ -327,24 +365,27 @@
   }
   .tray .t-meta{display:flex; align-items:baseline; gap:.5rem;
     font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-    color:var(--accent-dim)}
+    color:var(--accent)}
   .tray .t-meta .n{margin-left:auto; font-family:var(--mono); letter-spacing:0;
     text-transform:none; color:var(--faint); font-weight:500}
   .tray .t-text{font-family:var(--mono); font-size:.9rem; line-height:1.5;
     word-break:break-word}
   .tray .t-q{font-size:.8rem; color:var(--muted)}
-  .tray .opts{display:flex; gap:.5rem; flex-wrap:wrap}
+  .tray .opts{display:flex; gap:.5rem}
   .tray .opts button{
-    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
-    font:inherit; font-size:.82rem; font-weight:600; padding:.5rem .85rem;
-    border-radius:10px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    font:inherit; font-size:.86rem; font-weight:600; padding:.6rem .5rem;
+    border-radius:11px; cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
   .tray .opts button:active{transform:scale(.97)}
   .tray .opts button.sug{border-color:var(--accent-dim); color:var(--accent)}
   .tray .skip{background:none; border:none; color:var(--faint); font:inherit;
     font-size:.72rem; cursor:pointer; align-self:flex-end; padding:0}
   /* quadrant chips in focus mode */
-  .qchips{display:flex; gap:.4rem; flex-wrap:wrap}
+  .qchips{display:flex; gap:.4rem; overflow-x:auto; scrollbar-width:none;
+          -webkit-overflow-scrolling:touch; padding-bottom:.1rem}
+  .qchips::-webkit-scrollbar{display:none}
+  .qchips button{flex:none}
   .qchips button{
     background:none; border:1px solid var(--line); color:var(--muted);
     font:inherit; font-size:.72rem; font-weight:600; padding:.3rem .7rem;
@@ -356,7 +397,8 @@
   .plan-date{font-family:var(--mono); font-size:.64rem; color:var(--ok);
     border:1px solid var(--line); border-radius:6px; padding:0 .3rem;
     margin-left:.45rem; vertical-align:1px}
-  .plan-hint{font-size:.74rem; color:var(--faint); line-height:1.5}
+  .panel .task-row:last-child{border-bottom:none}
+  .panel .pt:last-child{border-bottom:none}
   /* move + date sheets */
   .move-grid{display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin:.6rem 0}
   .move-grid button{
@@ -439,22 +481,35 @@
     <div class="stream" id="stream"></div>
 
     <div class="today" id="viewPlan" hidden>
-      <div class="jobs">
-        <button class="job icon" id="planRefresh" aria-label="Refresh">↻</button>
+      <div class="vhead">
+        <span class="vh-dot" id="planDot" hidden></span>
+        <div class="vh-txt">
+          <div class="vh-title" id="planTitle">Plan</div>
+          <div class="vh-meta" id="planMeta">&nbsp;</div>
+        </div>
+        <button class="vh-act" id="planRefresh" aria-label="Refresh">↻</button>
       </div>
       <div id="planBody"></div>
     </div>
 
     <div class="today" id="viewToday" hidden>
-      <div class="jobs">
-        <button class="job icon" id="todayRefresh" aria-label="Refresh">↻</button>
+      <div class="vhead">
+        <div class="vh-txt">
+          <div class="vh-title">Today</div>
+          <div class="vh-meta" id="todayMeta">&nbsp;</div>
+        </div>
+        <button class="vh-act" id="todayRefresh" aria-label="Refresh">↻</button>
       </div>
       <div id="todayBody"></div>
     </div>
 
     <div class="today" id="viewOutside" hidden>
-      <div class="jobs">
-        <button class="job icon" id="outsideRefresh" aria-label="Refresh">↻</button>
+      <div class="vhead">
+        <div class="vh-txt">
+          <div class="vh-title" id="outsideTitle">Outside</div>
+          <div class="vh-meta" id="outsideMeta">&nbsp;</div>
+        </div>
+        <button class="vh-act" id="outsideRefresh" aria-label="Refresh">↻</button>
       </div>
       <div id="outsideBody"></div>
     </div>
@@ -855,7 +910,7 @@
   // the task list.
   async function fetchToday(){
     if(!cfg.url){ openSheet(); return; }
-    todayBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading today…</p></div>';
+    todayBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>Loading…</p></div>';
     const pToday=api("/today").then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
     const pCtx=api("/context").then(r=>r.ok? r.json():null).catch(()=>null);
     try{
@@ -864,7 +919,8 @@
     }catch(e){
       todayBody.innerHTML="";
       const box=el("div","tv-empty");
-      const p=el("p"); p.textContent="couldn't load today's list";
+      $("todayMeta").textContent="couldn't load";
+      const p=el("p"); p.textContent="Couldn't load today's list.";
       const b=el("button","job"); b.textContent="retry"; b.addEventListener("click",fetchToday);
       box.append(p,b); todayBody.append(box);
       return;
@@ -873,6 +929,16 @@
     todayCtx=await pCtx;                 // may be null; renderToday copes
     renderToday();
   }
+
+  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmtDate(iso){
+    const p=(iso||"").split("-");
+    if(p.length!==3) return iso||"";
+    const d=new Date(+p[0], +p[1]-1, +p[2]);
+    return DOW[d.getDay()]+" "+(+p[2])+" "+MON[d.getMonth()];
+  }
+  function plural(n, word){ return n+" "+word+(n===1?"":"s"); }
 
   function fmtHint(m){
     const h=Math.floor(m/60), r=m%60;
@@ -946,22 +1012,49 @@
     }
   }
 
+  // the head's meta line: what today actually costs, counted from the
+  // same hints the scheduler budgeted with
+  function todayMetaLine(d){
+    const bits=[fmtDate(d.date)];
+    if(!d.exists){ bits.push("not built yet"); return bits.join(" · "); }
+    let open=0, done=0, mins=0;
+    for(const n of d.tasks||[]){
+      if(!n.box) continue;
+      if(n.checked) done++;
+      else { open++; mins+=n.hint||0; }
+    }
+    bits.push(plural(open,"task"));
+    if(done) bits.push(done+" done");
+    if(mins) bits.push(fmtHint(mins).replace("~",""));
+    return bits.join(" · ");
+  }
+
   function renderToday(){
     todayBody.innerHTML="";
     const d=todayData;
     if(!d) return;
+    $("todayMeta").textContent=todayMetaLine(d);
     if(!d.exists){
       renderContext();
       const box=el("div","tv-empty");
       const g=el("span","glyph"); g.textContent="⌗";
-      const p=el("p"); p.textContent="no list yet for "+d.date;
-      box.append(g,p);
+      const p=el("p"); p.textContent="No list yet for "+fmtDate(d.date)+".";
+      const s=el("p"); s.style.fontSize=".78rem"; s.style.color="var(--faint)";
+      s.textContent="The morning run builds it at 8am.";
+      box.append(g,p,s);
       todayBody.append(box);
-      for(const n of d.done||[]) todayBody.append(taskRow(n,0,()=>{}));
+      if((d.done||[]).length){
+        const panel=el("div","panel");
+        const h=el("div","panel-head");
+        const t=el("span"); t.textContent="already done"; h.append(t);
+        const n=el("span","n"); n.textContent=d.done.length; h.append(n);
+        panel.append(h);
+        for(const nd of d.done) panel.append(taskRow(nd,0,()=>{}));
+        todayBody.append(panel);
+      }
+      const foot=el("div","vfoot"); foot.textContent=d.path; todayBody.append(foot);
       return;
     }
-    const dateEl=el("div","tv-date"); dateEl.textContent=d.date+" · "+d.path;
-    todayBody.append(dateEl);
     renderContext();
 
     // group by the `| Block` hint the scheduler stamped on each task. That
@@ -998,7 +1091,12 @@
           continue;
         }
         const row=taskRow(n,depth);
-        if(n.box && !n.checked && !steps.length) addWand(row,n,false);
+        // only offer the wand on work big enough to need pebbles — the
+        // same threshold the morning run breaks at. A 5-minute errand
+        // doesn't need three sub-steps, and the icon on every row was
+        // just noise.
+        if(n.box && !n.checked && !steps.length && depth===0
+           && (!n.hint || n.hint>10)) addWand(row,n,false);
         if(n.box && !n.checked && open.length && expandedParents.has(n.text)){
           const back=el("button","pt-redo"); back.textContent="▾ fold";
           back.addEventListener("click",e=>{ e.stopPropagation();
@@ -1021,20 +1119,30 @@
         walk(n.children,depth+1,into);
       }
     };
+    // top-level only, so a panel's count agrees with the head's task count —
+    // steps are how ONE task gets done, not additional tasks
+    const openCount=ns=>(ns||[]).filter(n=>n.box && !n.checked).length;
+    const panelFor=(name, span, nodes)=>{
+      const panel=el("div","panel");
+      const h=el("div","panel-head");
+      const t=el("span"); t.textContent=name; h.append(t);
+      if(span){ const s=el("span","span"); s.textContent=span; h.append(s); }
+      const n=el("span","n");
+      const oc=openCount(nodes);
+      n.textContent=oc? oc : "done";
+      h.append(n);
+      panel.append(h);
+      walk(nodes,0,panel);
+      todayBody.append(panel);
+    };
     for(const [name,nodes] of groups){
       if(!nodes.length) continue;
-      const h=el("div","blk-head");
-      const t=el("span"); t.textContent=name; h.append(t);
-      if(spans[name]){ const s=el("span","span"); s.textContent=spans[name]; h.append(s); }
-      todayBody.append(h);
-      walk(nodes,0);
+      panelFor(name, spans[name], nodes);
     }
     if(loose.length){
-      if(groups.size && [...groups.values()].some(v=>v.length)){
-        const h=el("div","blk-head"); h.textContent="anytime"; todayBody.append(h);
-      }
-      walk(loose,0);
+      panelFor("anytime", null, loose);
     }
+    const foot=el("div","vfoot"); foot.textContent=d.path; todayBody.append(foot);
   }
 
   // one flip in flight at a time keeps optimistic state trivially correct
@@ -1075,7 +1183,7 @@
 
   async function fetchPlan(){
     if(!cfg.url){ openSheet(); return; }
-    planBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading the matrix…</p></div>';
+    planBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>Loading…</p></div>';
     try{
       const r=await api("/plan");
       if(!r.ok) throw new Error("HTTP "+r.status);
@@ -1086,7 +1194,8 @@
     }catch(e){
       planBody.innerHTML="";
       const box=el("div","tv-empty");
-      const p=el("p"); p.textContent="couldn't load the plan";
+      $("planMeta").textContent="couldn't load";
+      const p=el("p"); p.textContent="Couldn't load the plan.";
       const b=el("button","job"); b.textContent="retry"; b.addEventListener("click",fetchPlan);
       box.append(p,b); planBody.append(box);
     }
@@ -1226,7 +1335,8 @@
     const card=el("div","tray");
     const meta=el("div","t-meta");
     const m1=el("span"); m1.textContent="sort";
-    const n=el("span","n"); n.textContent=tray.length+" to go";
+    const n=el("span","n");
+    n.textContent=(trayIdx+1)+" of "+tray.length;
     meta.append(m1,n);
     const txt=el("div","t-text"); txt.textContent=item.text;
     if(item.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(item.hint); txt.append(bd); }
@@ -1241,26 +1351,26 @@
 
     if(item.q && !item.confirmed && !trayImp){
       // triage pre-answered — one tap to agree
-      q.textContent="AI suggests: "+item.q;
-      opt("✓ "+(item.q==="schedule"? "pick a date" : item.q), ()=>finish(item.q), true);
-      opt("sort it myself", ()=>{ trayImp="ask"; renderPlan(); });
+      q.textContent="Sorted as "+item.q+" — keep it there?";
+      opt("✓ "+(item.q==="schedule"? "Pick a date" : "Yes"), ()=>finish(item.q), true);
+      opt("Sort it myself", ()=>{ trayImp="ask"; renderPlan(); });
     } else if(item.bang && !trayImp){
       // owner already said important; only urgency is open
-      q.textContent="marked important — urgent too?";
-      opt("do it today", ()=>finish("do"), true);
-      opt("pick a date", ()=>finish("schedule"));
+      q.textContent="Marked important — is it urgent?";
+      opt("Do today", ()=>finish("do"), true);
+      opt("Pick a date", ()=>finish("schedule"));
     } else if(trayImp===null || trayImp==="ask"){
-      q.textContent="important?";
-      opt("yes", ()=>{ trayImp="imp"; renderPlan(); });
-      opt("no",  ()=>{ trayImp="notimp"; renderPlan(); });
+      q.textContent="Is this important?";
+      opt("Yes", ()=>{ trayImp="imp"; renderPlan(); });
+      opt("No",  ()=>{ trayImp="notimp"; renderPlan(); });
     } else if(trayImp==="imp"){
-      q.textContent="important — urgent too?";
-      opt("yes — do today", ()=>finish("do"), true);
-      opt("no — pick a date", ()=>finish("schedule"));
+      q.textContent="Important — is it urgent too?";
+      opt("Do today", ()=>finish("do"), true);
+      opt("Pick a date", ()=>finish("schedule"));
     } else {
-      q.textContent="not important — urgent?";
-      opt("yes — delegate", ()=>finish("delegate"));
-      opt("no — drop", ()=>finish("drop"));
+      q.textContent="Not important — is it urgent?";
+      opt("Delegate", ()=>finish("delegate"));
+      opt("Drop", ()=>finish("drop"));
     }
     card.append(q,opts);
     if(tray.length>1){
@@ -1271,38 +1381,74 @@
     return card;
   }
 
+  // the head doubles as the focus breadcrumb: in a quadrant it shows that
+  // quadrant's name, colour and definition, and the action button becomes
+  // the way back to the board.
+  function paintPlanHead(){
+    const d=planData, dot=$("planDot"), act=$("planRefresh");
+    if(!d){ return; }
+    if(planFocus){
+      dot.hidden=false; dot.className="vh-dot q-"+planFocus;
+      $("planTitle").textContent=QMETA[planFocus].label[0].toUpperCase()+QMETA[planFocus].label.slice(1);
+      $("planMeta").textContent=QMETA[planFocus].hint+" · "+plural((d[planFocus]||[]).length,"task");
+      act.textContent="⊞"; act.setAttribute("aria-label","Back to the matrix");
+    }else{
+      dot.hidden=true;
+      $("planTitle").textContent="Plan";
+      const sorted=QKEYS.reduce((a,k)=>a+(d.counts[k]||0),0);
+      const waiting=(d.tray||[]).length;
+      $("planMeta").textContent=sorted+" sorted"+(waiting? " · "+waiting+" waiting to sort":"");
+      act.textContent="↻"; act.setAttribute("aria-label","Refresh");
+    }
+  }
+
   function renderPlan(){
     planBody.innerHTML="";
     const d=planData;
     if(!d){ fetchPlan(); return; }
+    paintPlanHead();
     const tray=renderTray();
     if(tray) planBody.append(tray);
 
     if(planFocus){
       const chips=el("div","qchips");
-      const grid=el("button"); grid.textContent="⊞";
-      grid.title="back to the matrix"; grid.setAttribute("aria-label","matrix");
-      grid.addEventListener("click",()=>{ planFocus=null; renderPlan(); });
-      chips.append(grid);
       for(const qk of QKEYS){
-        const c=el("button",(planFocus===qk?"on":""));
+        const on=planFocus===qk;
+        const c=el("button",(on?"on":""));
         c.append(el("span","qdot q-"+qk));
-        const t=el("span"); t.textContent=QMETA[qk].label+" "+(d.counts[qk]||0);
+        const t=el("span");
+        t.textContent=QMETA[qk].label+" "+(d.counts[qk]||0);
         c.append(t);
         c.addEventListener("click",()=>{ planFocus=qk; renderPlan(); });
         chips.append(c);
       }
       planBody.append(chips);
-      const hint=el("div","plan-hint"); hint.textContent=QMETA[planFocus].hint;
-      planBody.append(hint);
       const items=d[planFocus]||[];
       if(!items.length){
         const box=el("div","tv-empty");
         const g=el("span","glyph"); g.textContent="·";
-        const p=el("p"); p.textContent="nothing here";
+        const p=el("p"); p.textContent="Nothing in "+QMETA[planFocus].label+".";
         box.append(g,p); planBody.append(box);
+        return;
       }
-      for(const it of items) planBody.append(planRow(it));
+      const panel=el("div","panel");
+      for(const it of items) panel.append(planRow(it));
+      planBody.append(panel);
+      const hint=el("div","vhint");
+      hint.textContent=planFocus==="drop"
+        ? "Tap a task to archive it"
+        : "Tap a task to move or reschedule it";
+      planBody.append(hint);
+      return;
+    }
+
+    if(!(d.tray||[]).length && !QKEYS.some(k=>(d[k]||[]).length)){
+      const box=el("div","tv-empty");
+      const g=el("span","glyph"); g.textContent="⌗";
+      const p=el("p"); p.textContent="Nothing to sort.";
+      const s=el("p"); s.style.fontSize=".78rem"; s.style.color="var(--faint)";
+      s.textContent="Captures land here once you write them.";
+      box.append(g,p,s); planBody.append(box);
       return;
     }
 
@@ -1324,15 +1470,12 @@
       grid.append(cell);
     }
     planBody.append(grid);
-    if(!(d.tray||[]).length && !QKEYS.some(k=>(d[k]||[]).length)){
-      const box=el("div","tv-empty");
-      const g=el("span","glyph"); g.textContent="⌗";
-      const p=el("p"); p.textContent="nothing to plan — capture something first";
-      box.append(g,p); planBody.append(box);
-    }
   }
 
-  $("planRefresh").addEventListener("click",fetchPlan);
+  $("planRefresh").addEventListener("click",()=>{
+    if(planFocus){ planFocus=null; renderPlan(); }   // ⊞ back to the board
+    else fetchPlan();
+  });
 
   // ── composer flame ──
   let flameLevel=0;
@@ -1354,7 +1497,7 @@
   // the outside tab has no data, so switching from in here would recurse.
   async function openList(path, label){
     listPath=path; listLabel=label||path;
-    outsideBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>loading '+listLabel+'…</p></div>';
+    outsideBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>Loading…</p></div>';
     try{
       const r=await api("/list?path="+encodeURIComponent(path));
       if(!r.ok) throw new Error("HTTP "+r.status);
@@ -1364,7 +1507,8 @@
     }catch(e){
       outsideBody.innerHTML="";
       const box=el("div","tv-empty");
-      const p=el("p"); p.textContent="couldn't load "+listLabel;
+      $("outsideMeta").textContent="couldn't load";
+      const p=el("p"); p.textContent="Couldn't load "+listLabel+".";
       const b=el("button","job"); b.textContent="retry";
       b.addEventListener("click",()=>openList(path,label));
       box.append(p,b); outsideBody.append(box);
@@ -1384,17 +1528,23 @@
     outsideBody.innerHTML="";
     const d=listData;
     if(!d) return;
-    const head=el("div","tv-date"); head.textContent=d.path;
-    outsideBody.append(head);
+    $("outsideTitle").textContent=listLabel==="outside"? "Outside" : listLabel;
     const items=(d.items||[]).filter(i=>!i.checked);
+    $("outsideMeta").textContent=items.length
+      ? plural(items.length,"errand")+" · while you're out"
+      : (d.exists? "all clear" : "no list note yet");
     if(!items.length){
       const box=el("div","tv-empty");
       const g=el("span","glyph"); g.textContent="✓";
-      const p=el("p"); p.textContent=d.exists? "nothing on the list" : "no list note yet";
+      const p=el("p"); p.textContent=d.exists? "Nothing to pick up." : "No list note yet.";
       box.append(g,p); outsideBody.append(box);
+      const foot=el("div","vfoot"); foot.textContent=d.path; outsideBody.append(foot);
       return;
     }
-    for(const n of items) outsideBody.append(taskRow(n,0,tickListItem));
+    const panel=el("div","panel");
+    for(const n of items) panel.append(taskRow(n,0,tickListItem));
+    outsideBody.append(panel);
+    const foot=el("div","vfoot"); foot.textContent=d.path; outsideBody.append(foot);
   }
 
   // Ticking is a cross-file MOVE on the server: the line is deleted here and

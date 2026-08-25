@@ -10,7 +10,7 @@
 // so a stale version string means the phone keeps running the old app no
 // matter what was deployed.
 
-const CACHE = "inbox-shell-v6";
+const CACHE = "inbox-shell-v7";
 const SHELL = [
   "./",
   "./index.html",
