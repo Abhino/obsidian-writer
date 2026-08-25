@@ -524,6 +524,7 @@
     <label for="datePick">or pick a date</label>
     <input id="datePick" type="date" />
     <div class="row">
+      <button class="test" id="dateCancel" data-cancel>Cancel</button>
       <button class="save" id="dateGo">Schedule</button>
     </div>
   </div>
@@ -827,6 +828,7 @@
 
   function switchView(v){
     curView=v;
+    if(typeof closeSheets==="function") closeSheets();
     document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.view===v));
     const cap = v==="capture";
     pinsEl.style.display = cap? "" : "none";
@@ -1140,22 +1142,29 @@
   function openDateSheet(cb){
     dateCb=cb;
     $("datePick").value=dayOffset(1);
-    dateSheet.classList.add("open"); scrim.classList.add("show");
+    dateSheet.classList.add("open"); scrim.classList.add("open");
   }
+  // shared dismiss for the plan sheets — the scrim (class `open`, same as
+  // the settings/pin sheets) is what locks the page behind them; toggling
+  // anything else left the tab bar live under an undismissable panel
   function closeSheets(){
     dateSheet.classList.remove("open"); moveSheet.classList.remove("open");
+    if(!sheet.classList.contains("open") && !pinSheet.classList.contains("open"))
+      scrim.classList.remove("open");
+    dateCb=null; moveItem=null;
   }
+  $("dateCancel").addEventListener("click",closeSheets);
   document.querySelectorAll("#dateSheet .date-quick button").forEach(b=>
     b.addEventListener("click",()=>{
       const d=b.dataset.d==="tomorrow"? dayOffset(1)
             : b.dataset.d==="weekend"? nextDow(6) : nextDow(1);
-      const cb=dateCb; dateCb=null; closeSheets(); scrim.classList.remove("show");
+      const cb=dateCb; closeSheets();
       if(cb) cb(d);
     }));
   $("dateGo").addEventListener("click",()=>{
     const v=$("datePick").value;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ showToast("pick a date first"); return; }
-    const cb=dateCb; dateCb=null; closeSheets(); scrim.classList.remove("show");
+    const cb=dateCb; closeSheets();
     if(cb) cb(v);
   });
 
@@ -1168,8 +1177,7 @@
     const t=el("span"); t.textContent=q==="schedule"? "schedule…" : QMETA[q].label;
     b.append(t);
     b.addEventListener("click",()=>{
-      const it=moveItem; moveItem=null;
-      moveSheet.classList.remove("open"); scrim.classList.remove("show");
+      const it=moveItem; closeSheets();
       if(!it) return;
       if(q==="schedule") openDateSheet(d=>classify(it,"schedule",d));
       else classify(it,q);
@@ -1177,19 +1185,17 @@
     moveGrid.append(b);
   });
   $("moveUnsort").addEventListener("click",()=>{
-    const it=moveItem; moveItem=null;
-    moveSheet.classList.remove("open"); scrim.classList.remove("show");
+    const it=moveItem; closeSheets();
     if(it) classify(it,"unsorted");
   });
   $("moveArchive").addEventListener("click",async()=>{
-    const it=moveItem; moveItem=null;
-    moveSheet.classList.remove("open"); scrim.classList.remove("show");
+    const it=moveItem; closeSheets();
     if(it && await classify(it,"archive")) planUndoToast(it,"archived");
   });
   function openMoveSheet(item){
     moveItem=item;
     $("moveTitle").textContent=item.text;
-    moveSheet.classList.add("open"); scrim.classList.add("show");
+    moveSheet.classList.add("open"); scrim.classList.add("open");
   }
 
   function planRow(item){
