@@ -23,6 +23,12 @@
     --ui:"Hanken Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   }
   *{box-sizing:border-box}
+  /* The `hidden` attribute only sets display:none in the BROWSER's default
+     stylesheet, so any author rule with its own display (.today is
+     display:flex) silently beats it and the "hidden" view renders anyway —
+     which stacked plan, today and outside on one page. This makes hidden
+     mean hidden, everywhere. */
+  [hidden]{display:none !important}
   html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--ink);
@@ -889,9 +895,15 @@
     pinsEl.style.display = cap? "" : "none";
     stream.style.display = cap? "" : "none";
     composerEl.style.display = cap? "" : "none";
-    viewToday.hidden = v!=="today";
-    viewOutside.hidden = v!=="outside";
-    viewPlan.hidden = v!=="plan";
+    // Inline display, not just the `hidden` attribute: `hidden` only sets
+    // display:none in the browser's DEFAULT stylesheet, and .today carries
+    // its own display:flex — an author rule, which always wins. That's why
+    // plan, today and outside all rendered stacked on one page. Inline
+    // style beats both, and is what the capture elements above already use.
+    const show=(elm,on)=>{ elm.hidden=!on; elm.style.display = on? "flex" : "none"; };
+    show(viewToday,   v==="today");
+    show(viewOutside, v==="outside");
+    show(viewPlan,    v==="plan");
     if(v==="plan" && (!planData || Date.now()-planFetchedAt > TODAY_STALE_MS)) fetchPlan();
     if(v==="today" && (!todayData || Date.now()-todayFetchedAt > TODAY_STALE_MS)) fetchToday();
     if(v==="outside" && !listData)
@@ -1608,6 +1620,9 @@
   window.addEventListener("offline",()=>setConn("offline"));
 
   // ── boot ───────────────────────────────
+  // the list views start closed — see switchView for why `hidden` alone
+  // isn't enough to keep them off the capture screen
+  for(const vw of [viewPlan, viewToday, viewOutside]){ vw.hidden=true; vw.style.display="none"; }
   // restore queued items into the session view so nothing feels lost
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
