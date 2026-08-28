@@ -26,7 +26,7 @@
   /* The `hidden` attribute only sets display:none in the BROWSER's default
      stylesheet, so any author rule with its own display (.today is
      display:flex) silently beats it and the "hidden" view renders anyway —
-     which stacked plan, today and outside on one page. This makes hidden
+     which stacked today and outside on one page. This makes hidden
      mean hidden, everywhere. */
   [hidden]{display:none !important}
   html,body{height:100%}
@@ -339,96 +339,6 @@
          opacity:.65; text-align:center; padding:.9rem 0 .2rem}
   .vhint{font-size:.72rem; color:var(--faint); text-align:center; padding:.8rem 0 .2rem}
 
-  /* ── plan: Eisenhower matrix ──────────── */
-  .qdot{flex:none; width:7px; height:7px; border-radius:50%; margin-top:.56rem;
-        background:var(--faint)}
-  .qdot.q-do{background:var(--accent)}
-  .qdot.q-schedule{background:var(--ok)}
-  .qdot.q-delegate{background:var(--warn)}
-  .task-row .tx{flex:1}
-  .matrix{display:grid; grid-template-columns:1fr 1fr; gap:.6rem}
-  .quad{
-    background:var(--surface); border:1px solid var(--line); border-radius:14px;
-    padding:.7rem .8rem; cursor:pointer; min-height:104px; text-align:left;
-    font:inherit; color:var(--ink); display:flex; flex-direction:column; gap:.15rem;
-    -webkit-tap-highlight-color:transparent;
-  }
-  .quad:active{transform:scale(.98)}
-  .quad:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  .quad .qh{display:flex; align-items:center; gap:.4rem;
-    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-    color:var(--muted)}
-  .quad .qh .qdot{margin-top:0}
-  .quad .cnt{font-family:var(--mono); font-size:1.45rem; line-height:1.1; color:var(--ink)}
-  .quad .peek{font-family:var(--mono); font-size:.68rem; color:var(--faint);
-    line-height:1.45; overflow:hidden; display:-webkit-box;
-    -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word}
-  .quad.empty .cnt{color:var(--faint)}
-  /* the triage tray — the two-tap sorter */
-  .tray{
-    background:var(--surface); border:1px solid var(--accent-dim); border-radius:14px;
-    padding:.75rem .85rem; display:flex; flex-direction:column; gap:.6rem;
-  }
-  .tray .t-meta{display:flex; align-items:baseline; gap:.5rem;
-    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-    color:var(--accent)}
-  .tray .t-meta .n{margin-left:auto; font-family:var(--mono); letter-spacing:0;
-    text-transform:none; color:var(--faint); font-weight:500}
-  .tray .t-text{font-family:var(--mono); font-size:.9rem; line-height:1.5;
-    word-break:break-word}
-  .tray .t-q{font-size:.8rem; color:var(--muted)}
-  .tray .opts{display:flex; gap:.5rem}
-  .tray .opts button{
-    flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
-    font:inherit; font-size:.86rem; font-weight:600; padding:.6rem .5rem;
-    border-radius:11px; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  }
-  .tray .opts button:active{transform:scale(.97)}
-  .tray .opts button.sug{border-color:var(--accent-dim); color:var(--accent)}
-  .tray .skip{background:none; border:none; color:var(--faint); font:inherit;
-    font-size:.72rem; cursor:pointer; align-self:flex-end; padding:0}
-  /* quadrant chips in focus mode */
-  .qchips{display:flex; gap:.4rem; overflow-x:auto; scrollbar-width:none;
-          -webkit-overflow-scrolling:touch; padding-bottom:.1rem}
-  .qchips::-webkit-scrollbar{display:none}
-  .qchips button{flex:none}
-  .qchips button{
-    background:none; border:1px solid var(--line); color:var(--muted);
-    font:inherit; font-size:.72rem; font-weight:600; padding:.3rem .7rem;
-    border-radius:999px; cursor:pointer; display:inline-flex; gap:.35rem;
-    align-items:center; -webkit-tap-highlight-color:transparent;
-  }
-  .qchips button.on{color:var(--ink); border-color:var(--accent-dim)}
-  .qchips button .qdot{margin-top:0}
-  .plan-date{font-family:var(--mono); font-size:.64rem; color:var(--ok);
-    border:1px solid var(--line); border-radius:6px; padding:0 .3rem;
-    margin-left:.45rem; vertical-align:1px}
-  .panel .task-row:last-child{border-bottom:none}
-  .panel .pt:last-child{border-bottom:none}
-  /* move + date sheets */
-  .move-grid{display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin:.6rem 0}
-  .move-grid button{
-    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
-    font:inherit; font-size:.84rem; font-weight:600; padding:.7rem .6rem;
-    border-radius:12px; cursor:pointer; display:flex; gap:.5rem; align-items:center;
-    justify-content:center; -webkit-tap-highlight-color:transparent;
-  }
-  .move-grid button:active{transform:scale(.97)}
-  .date-quick{display:flex; gap:.5rem; flex-wrap:wrap; margin:.4rem 0 .8rem}
-  .date-quick button{
-    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
-    font:inherit; font-size:.82rem; font-weight:600; padding:.55rem .85rem;
-    border-radius:10px; cursor:pointer;
-  }
-  #dateSheet input[type=date]{color-scheme:dark}
-  /* composer flame */
-  .flame{
-    background:none; border:1px solid transparent; color:var(--faint);
-    font-family:var(--mono); font-size:.8rem; font-weight:700;
-    padding:.15rem .55rem; border-radius:6px; cursor:pointer; flex:none;
-  }
-  .flame.l1{color:var(--accent); border-color:var(--accent-dim)}
-  .flame.l2{color:var(--warn); border-color:var(--warn)}
   /* today: collapsed parent → next step */
   .pt{border-bottom:1px solid var(--line); padding:.2rem 0}
   .pt:last-child{border-bottom:none}
@@ -444,14 +354,6 @@
   .pt .next-lbl{font-size:.6rem; font-weight:700; letter-spacing:.08em;
     text-transform:uppercase; color:var(--faint); margin:.25rem 0 0}
   .pt .task-row{border-bottom:none}
-  .wand{
-    margin-left:.4rem; flex:none; background:none; border:none; color:var(--faint);
-    font-size:.92rem; line-height:1; cursor:pointer; padding:.1rem .3rem;
-    align-self:center;
-  }
-  .wand:hover{color:var(--accent)}
-  .wand.busy{color:var(--accent); animation:pulse 1s ease-in-out infinite}
-  .wand:disabled{cursor:default}
   .pt-redo{background:none; border:none; color:var(--faint); font-family:var(--mono);
     font-size:.64rem; cursor:pointer; flex:none; padding:0 .2rem}
   .pt-redo:hover{color:var(--accent)}
@@ -477,7 +379,6 @@
 
     <nav class="tabs" id="tabs" role="tablist">
       <button class="tab active" data-view="capture" role="tab">capture</button>
-      <button class="tab" data-view="plan" role="tab">plan</button>
       <button class="tab" data-view="today" role="tab">today</button>
       <button class="tab" data-view="outside" role="tab">outside</button>
     </nav>
@@ -485,18 +386,6 @@
     <div class="pins" id="pins"></div>
 
     <div class="stream" id="stream"></div>
-
-    <div class="today" id="viewPlan" hidden>
-      <div class="vhead">
-        <span class="vh-dot" id="planDot" hidden></span>
-        <div class="vh-txt">
-          <div class="vh-title" id="planTitle">Plan</div>
-          <div class="vh-meta" id="planMeta">&nbsp;</div>
-        </div>
-        <button class="vh-act" id="planRefresh" aria-label="Refresh">↻</button>
-      </div>
-      <div id="planBody"></div>
-    </div>
 
     <div class="today" id="viewToday" hidden>
       <div class="vhead">
@@ -528,7 +417,6 @@
             <button data-t="inbox" class="on">inbox</button>
             <button data-t="outside">outside</button>
           </div>
-          <button class="flame" id="flameBtn" aria-label="Mark important" title="! important · !! urgent+important">!</button>
           <span class="hint" id="hint">⌘↵</span>
           <button class="send" id="sendBtn" disabled>capture
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -572,30 +460,6 @@
     <div class="row">
       <button class="test" id="pinDeleteBtn" style="display:none; color:var(--warn)">Remove</button>
       <button class="save" id="pinSaveBtn">Save pin</button>
-    </div>
-  </div>
-
-  <div class="sheet" id="dateSheet" role="dialog" aria-label="Pick a date">
-    <h2>Schedule for…</h2>
-    <div class="date-quick">
-      <button data-d="tomorrow">tomorrow</button>
-      <button data-d="weekend">this weekend</button>
-      <button data-d="nextweek">next week</button>
-    </div>
-    <label for="datePick">or pick a date</label>
-    <input id="datePick" type="date" />
-    <div class="row">
-      <button class="test" id="dateCancel" data-cancel>Cancel</button>
-      <button class="save" id="dateGo">Schedule</button>
-    </div>
-  </div>
-
-  <div class="sheet" id="moveSheet" role="dialog" aria-label="Move task">
-    <h2 id="moveTitle" style="word-break:break-word"></h2>
-    <div class="move-grid" id="moveGrid"></div>
-    <div class="row">
-      <button class="test" id="moveUnsort">↩ back to tray</button>
-      <button class="test" id="moveArchive" style="color:var(--warn)">Archive</button>
     </div>
   </div>
 
@@ -728,10 +592,6 @@
   function capture(){
     let text=input.value.trim();
     if(!text) return;
-    if(flameLevel && targetPath()===cfg.target){
-      text="!".repeat(flameLevel)+text;      // owner importance mark — law
-      flameLevel=0; paintFlame();
-    }
     const item={ id:Date.now()+""+Math.random().toString(36).slice(2,6), text,
                  ts:Date.now(), status:"saving", target:targetPath() };
     session.push(item);
@@ -880,11 +740,9 @@
   // ── views: capture ⇄ today ⇄ outside ───
   const viewToday=$("viewToday"), todayBody=$("todayBody"),
         viewOutside=$("viewOutside"), outsideBody=$("outsideBody"),
-        viewPlan=$("viewPlan"), planBody=$("planBody"),
         composerEl=document.querySelector(".composer");
   let curView="capture", todayData=null, todayCtx=null, todayFetchedAt=0;
   let listData=null, listPath=null, listLabel="outside";
-  let planData=null, planFetchedAt=0, planFocus=null, trayIdx=0, trayImp=null;
   const TODAY_STALE_MS=60000;
 
   function switchView(v){
@@ -898,13 +756,11 @@
     // Inline display, not just the `hidden` attribute: `hidden` only sets
     // display:none in the browser's DEFAULT stylesheet, and .today carries
     // its own display:flex — an author rule, which always wins. That's why
-    // plan, today and outside all rendered stacked on one page. Inline
+    // today and outside all rendered stacked on one page. Inline
     // style beats both, and is what the capture elements above already use.
     const show=(elm,on)=>{ elm.hidden=!on; elm.style.display = on? "flex" : "none"; };
     show(viewToday,   v==="today");
     show(viewOutside, v==="outside");
-    show(viewPlan,    v==="plan");
-    if(v==="plan" && (!planData || Date.now()-planFetchedAt > TODAY_STALE_MS)) fetchPlan();
     if(v==="today" && (!todayData || Date.now()-todayFetchedAt > TODAY_STALE_MS)) fetchToday();
     if(v==="outside" && !listData)
       openList(listPath||cfg.outside||"outside-list.md", listLabel);
@@ -965,40 +821,9 @@
     const tx=el("span","tx"); tx.textContent=n.text;
     if(n.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(n.hint); tx.append(bd); }
     row.append(cb);
-    if(n.q && n.q!=="drop") row.append(el("span","qdot q-"+n.q));
     row.append(tx);
     if(n.box) row.addEventListener("click",()=>(onToggle||toggleTask)(row,n));
     return row;
-  }
-
-  // the wand: one task → small AI steps, server-side. The reply is the
-  // refreshed /today payload, so rendering follows the /check pattern —
-  // always from the server's truth.
-  function addWand(row, n, redo){
-    const w=el("button","wand"); w.textContent="✦";
-    w.title=redo? "regenerate steps" : "break into steps";
-    w.setAttribute("aria-label", w.title);
-    w.addEventListener("click", async e=>{
-      e.stopPropagation();
-      if(w.disabled) return;
-      w.disabled=true; w.classList.add("busy");
-      try{
-        const r=await api("/breakdown",{ method:"POST",
-          body:JSON.stringify({ date:todayData.date, text:n.text, redo:!!redo }) });
-        if(!r.ok){
-          const d=await r.json().catch(()=>({}));
-          throw new Error(d.error==="no_task"? "task changed — refresh" :
-                          d.error||"HTTP "+r.status);
-        }
-        todayData=await r.json(); todayFetchedAt=Date.now();
-        expandedParents.add(n.text);
-        renderToday();
-      }catch(err){
-        showToast("couldn't break down — "+(err.message||"try again"));
-        w.disabled=false; w.classList.remove("busy");
-      }
-    });
-    row.append(w);
   }
 
   function renderContext(){
@@ -1071,7 +896,7 @@
 
     // group by the `| Block` hint the scheduler stamped on each task. That
     // replaces the old `#### Morning` subsections in the markdown — same
-    // plan, but the file stays a flat record.
+    // layout, but the file stays a flat record.
     const order=(todayCtx&&todayCtx.blocks? todayCtx.blocks.map(b=>b.name) : d.blocks||[]);
     const spans={}; (todayCtx&&todayCtx.blocks||[]).forEach(b=>{spans[b.name]=b.start+"–"+b.end;});
     const groups=new Map(); order.forEach(b=>groups.set(b,[]));
@@ -1080,9 +905,9 @@
       const b=n.block;
       if(b && groups.has(b)) groups.get(b).push(n); else loose.push(n);
     }
-    // A parent with unchecked steps collapses to just its NEXT step —
-    // the whole point of the breakdown is that you only ever face one
-    // pebble. Tap the small title to see the full ladder.
+    // A parent with unchecked subtasks collapses to just its NEXT one, so
+    // you only ever face a single step. Tap the small title to see the
+    // full ladder.
     const walk=(nodes,depth,into)=>{
       const host=into||todayBody;
       for(const n of nodes||[]){
@@ -1103,29 +928,11 @@
           continue;
         }
         const row=taskRow(n,depth);
-        // only offer the wand on work big enough to need pebbles — the
-        // same threshold the morning run breaks at. A 5-minute errand
-        // doesn't need three sub-steps, and the icon on every row was
-        // just noise.
-        if(n.box && !n.checked && !steps.length && depth===0
-           && (!n.hint || n.hint>10)) addWand(row,n,false);
         if(n.box && !n.checked && open.length && expandedParents.has(n.text)){
           const back=el("button","pt-redo"); back.textContent="▾ fold";
           back.addEventListener("click",e=>{ e.stopPropagation();
             expandedParents.delete(n.text); renderToday(); });
-          const redo=el("button","pt-redo"); redo.textContent="✦ redo";
-          redo.title="regenerate the AI steps (your own subtasks stay)";
-          redo.addEventListener("click", async e=>{
-            e.stopPropagation();
-            redo.disabled=true; redo.textContent="…";
-            try{
-              const r=await api("/breakdown",{ method:"POST",
-                body:JSON.stringify({ date:todayData.date, text:n.text, redo:true }) });
-              if(!r.ok) throw new Error("HTTP "+r.status);
-              todayData=await r.json(); todayFetchedAt=Date.now(); renderToday();
-            }catch(err){ showToast("couldn't redo steps"); renderToday(); }
-          });
-          row.append(back,redo);
+          row.append(back);
         }
         host.append(row);
         walk(n.children,depth+1,into);
@@ -1181,328 +988,6 @@
       toggling=false; row.classList.remove("pending");
     }
   }
-
-  // ── plan: the Eisenhower matrix ────────
-  // GET /plan is a lens over the inbox + Future Days; every mutation goes
-  // through POST /plan/classify and re-renders from the payload it returns.
-  const QMETA={
-    do:      {label:"do",       hint:"urgent + important — lands on today"},
-    schedule:{label:"schedule", hint:"important, not urgent — pick its day"},
-    delegate:{label:"delegate", hint:"urgent, not important — hand it off"},
-    drop:    {label:"drop",     hint:"neither — tap one to archive it"},
-  };
-  const QKEYS=["do","schedule","delegate","drop"];
-
-  async function fetchPlan(){
-    if(!cfg.url){ openSheet(); return; }
-    planBody.innerHTML='<div class="tv-empty"><span class="glyph">⌗</span><p>Loading…</p></div>';
-    try{
-      const r=await api("/plan");
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      planData=await r.json(); planFetchedAt=Date.now();
-      trayIdx=0; trayImp=null;
-      lastOk=Date.now(); setConn("online");
-      renderPlan();
-    }catch(e){
-      planBody.innerHTML="";
-      const box=el("div","tv-empty");
-      $("planMeta").textContent="couldn't load";
-      const p=el("p"); p.textContent="Couldn't load the plan.";
-      const b=el("button","job"); b.textContent="retry"; b.addEventListener("click",fetchPlan);
-      box.append(p,b); planBody.append(box);
-    }
-  }
-
-  // one classify in flight at a time, same rule as /check
-  let classifying=false;
-  async function classify(item, to, date, opts){
-    if(classifying) return false;
-    classifying=true;
-    try{
-      const body={ raw:item.raw, to };
-      if(date) body.date=date;
-      if(item.date) body.from_date=item.date;
-      const r=await api("/plan/classify",{ method:"POST", body:JSON.stringify(body) });
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      const d=await r.json();
-      if(d && d.counts){ planData=d; planFetchedAt=Date.now(); }
-      else planData=null;                     // fallback shape — refetch later
-      trayIdx=0; trayImp=null;
-      todayData=null;                         // a move can change today's pool
-      if(!(opts&&opts.silent)) renderPlan();
-      return true;
-    }catch(e){
-      showToast("couldn't move — check connection");
-      renderPlan();
-      return false;
-    }finally{ classifying=false; }
-  }
-
-  function planUndoToast(item, label){
-    toast.innerHTML="";
-    const s=el("span"); s.textContent=label;
-    const b=el("button","undo"); b.textContent="undo";
-    b.addEventListener("click", async ()=>{
-      toast.classList.remove("show");
-      // restore = classify back to where it was; the server re-appends a
-      // line that no longer exists, so this works after an archive too
-      const back=item.date? "schedule" : (item.q&&item.confirmed? item.q : "unsorted");
-      await classify({ raw:item.raw }, back, item.date||null);
-    });
-    toast.append(s,b); toast.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer=setTimeout(()=>toast.classList.remove("show"), 5000);
-  }
-
-  // ── date sheet ──
-  const dateSheet=$("dateSheet"); let dateCb=null;
-  function isoLocal(d){ const p=n=>String(n).padStart(2,"0");
-    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
-  function dayOffset(n){ const d=new Date(); d.setDate(d.getDate()+n); return isoLocal(d); }
-  function nextDow(dow){ const d=new Date(); const diff=(dow-d.getDay()+7)%7||7; return dayOffset(diff); }
-  function openDateSheet(cb){
-    dateCb=cb;
-    $("datePick").value=dayOffset(1);
-    dateSheet.classList.add("open"); scrim.classList.add("open");
-  }
-  // shared dismiss for the plan sheets — the scrim (class `open`, same as
-  // the settings/pin sheets) is what locks the page behind them; toggling
-  // anything else left the tab bar live under an undismissable panel
-  function closeSheets(){
-    dateSheet.classList.remove("open"); moveSheet.classList.remove("open");
-    if(!sheet.classList.contains("open") && !pinSheet.classList.contains("open"))
-      scrim.classList.remove("open");
-    dateCb=null; moveItem=null;
-  }
-  $("dateCancel").addEventListener("click",closeSheets);
-  document.querySelectorAll("#dateSheet .date-quick button").forEach(b=>
-    b.addEventListener("click",()=>{
-      const d=b.dataset.d==="tomorrow"? dayOffset(1)
-            : b.dataset.d==="weekend"? nextDow(6) : nextDow(1);
-      const cb=dateCb; closeSheets();
-      if(cb) cb(d);
-    }));
-  $("dateGo").addEventListener("click",()=>{
-    const v=$("datePick").value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ showToast("pick a date first"); return; }
-    const cb=dateCb; closeSheets();
-    if(cb) cb(v);
-  });
-
-  // ── move sheet ──
-  const moveSheet=$("moveSheet"); let moveItem=null;
-  const moveGrid=$("moveGrid");
-  QKEYS.forEach(q=>{
-    const b=el("button");
-    b.append(el("span","qdot q-"+q));
-    const t=el("span"); t.textContent=q==="schedule"? "schedule…" : QMETA[q].label;
-    b.append(t);
-    b.addEventListener("click",()=>{
-      const it=moveItem; closeSheets();
-      if(!it) return;
-      if(q==="schedule") openDateSheet(d=>classify(it,"schedule",d));
-      else classify(it,q);
-    });
-    moveGrid.append(b);
-  });
-  $("moveUnsort").addEventListener("click",()=>{
-    const it=moveItem; closeSheets();
-    if(it) classify(it,"unsorted");
-  });
-  $("moveArchive").addEventListener("click",async()=>{
-    const it=moveItem; closeSheets();
-    if(it && await classify(it,"archive")) planUndoToast(it,"archived");
-  });
-  function openMoveSheet(item){
-    moveItem=item;
-    $("moveTitle").textContent=item.text;
-    moveSheet.classList.add("open"); scrim.classList.add("open");
-  }
-
-  function planRow(item){
-    const row=el("div","task-row struct");
-    row.style.cursor="pointer";
-    row.append(el("span","qdot q-"+(item.q||"drop")));
-    const tx=el("span","tx"); tx.textContent=item.text;
-    tx.style.color="var(--ink)"; tx.style.fontWeight="400";
-    if(item.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(item.hint); tx.append(bd); }
-    if(item.date){ const d=el("span","plan-date"); d.textContent=item.date.slice(5); tx.append(d); }
-    if(item.bang){ const b=el("span","badge"); b.textContent="!".repeat(item.bang);
-      b.style.color="var(--accent)"; tx.append(b); }
-    row.append(tx);
-    row.addEventListener("click",async()=>{
-      if(planFocus==="drop" && item.q==="drop" && !item.date){
-        // the drop pile: one tap = gone (undo has 5 seconds)
-        if(await classify(item,"archive")) planUndoToast(item,"archived");
-      } else openMoveSheet(item);
-    });
-    return row;
-  }
-
-  function renderTray(){
-    const tray=planData.tray||[];
-    if(!tray.length) return null;
-    if(trayIdx>=tray.length) trayIdx=0;
-    const item=tray[trayIdx];
-    const card=el("div","tray");
-    const meta=el("div","t-meta");
-    const m1=el("span"); m1.textContent="sort";
-    const n=el("span","n");
-    n.textContent=(trayIdx+1)+" of "+tray.length;
-    meta.append(m1,n);
-    const txt=el("div","t-text"); txt.textContent=item.text;
-    if(item.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(item.hint); txt.append(bd); }
-    card.append(meta,txt);
-    const q=el("div","t-q"), opts=el("div","opts");
-
-    const finish=(to)=>{ trayImp=null;
-      if(to==="schedule") openDateSheet(d=>classify(item,"schedule",d));
-      else classify(item,to); };
-    const opt=(label,fn,sug)=>{ const b=el("button"+(sug?"":""),(sug?"sug":""));
-      b.textContent=label; b.addEventListener("click",fn); opts.append(b); };
-
-    if(item.q && !item.confirmed && !trayImp){
-      // triage pre-answered — one tap to agree
-      q.textContent="Sorted as "+item.q+" — keep it there?";
-      opt("✓ "+(item.q==="schedule"? "Pick a date" : "Yes"), ()=>finish(item.q), true);
-      opt("Sort it myself", ()=>{ trayImp="ask"; renderPlan(); });
-    } else if(item.bang && !trayImp){
-      // owner already said important; only urgency is open
-      q.textContent="Marked important — is it urgent?";
-      opt("Do today", ()=>finish("do"), true);
-      opt("Pick a date", ()=>finish("schedule"));
-    } else if(trayImp===null || trayImp==="ask"){
-      q.textContent="Is this important?";
-      opt("Yes", ()=>{ trayImp="imp"; renderPlan(); });
-      opt("No",  ()=>{ trayImp="notimp"; renderPlan(); });
-    } else if(trayImp==="imp"){
-      q.textContent="Important — is it urgent too?";
-      opt("Do today", ()=>finish("do"), true);
-      opt("Pick a date", ()=>finish("schedule"));
-    } else {
-      q.textContent="Not important — is it urgent?";
-      opt("Delegate", ()=>finish("delegate"));
-      opt("Drop", ()=>finish("drop"));
-    }
-    card.append(q,opts);
-    if(tray.length>1){
-      const skip=el("button","skip"); skip.textContent="skip →";
-      skip.addEventListener("click",()=>{ trayIdx=(trayIdx+1)%tray.length; trayImp=null; renderPlan(); });
-      card.append(skip);
-    }
-    return card;
-  }
-
-  // the head doubles as the focus breadcrumb: in a quadrant it shows that
-  // quadrant's name, colour and definition, and the action button becomes
-  // the way back to the board.
-  function paintPlanHead(){
-    const d=planData, dot=$("planDot"), act=$("planRefresh");
-    if(!d){ return; }
-    if(planFocus){
-      dot.hidden=false; dot.className="vh-dot q-"+planFocus;
-      $("planTitle").textContent=QMETA[planFocus].label[0].toUpperCase()+QMETA[planFocus].label.slice(1);
-      $("planMeta").textContent=QMETA[planFocus].hint+" · "+plural((d[planFocus]||[]).length,"task");
-      act.textContent="⊞"; act.setAttribute("aria-label","Back to the matrix");
-    }else{
-      dot.hidden=true;
-      $("planTitle").textContent="Plan";
-      const sorted=QKEYS.reduce((a,k)=>a+(d.counts[k]||0),0);
-      const waiting=(d.tray||[]).length;
-      $("planMeta").textContent=sorted+" sorted"+(waiting? " · "+waiting+" waiting to sort":"");
-      act.textContent="↻"; act.setAttribute("aria-label","Refresh");
-    }
-  }
-
-  function renderPlan(){
-    planBody.innerHTML="";
-    const d=planData;
-    if(!d){ fetchPlan(); return; }
-    paintPlanHead();
-    const tray=renderTray();
-    if(tray) planBody.append(tray);
-
-    if(planFocus){
-      const chips=el("div","qchips");
-      for(const qk of QKEYS){
-        const on=planFocus===qk;
-        const c=el("button",(on?"on":""));
-        c.append(el("span","qdot q-"+qk));
-        const t=el("span");
-        t.textContent=QMETA[qk].label+" "+(d.counts[qk]||0);
-        c.append(t);
-        c.addEventListener("click",()=>{ planFocus=qk; renderPlan(); });
-        chips.append(c);
-      }
-      planBody.append(chips);
-      const items=d[planFocus]||[];
-      if(!items.length){
-        const box=el("div","tv-empty");
-        const g=el("span","glyph"); g.textContent="·";
-        const p=el("p"); p.textContent="Nothing in "+QMETA[planFocus].label+".";
-        box.append(g,p); planBody.append(box);
-        return;
-      }
-      const panel=el("div","panel");
-      for(const it of items) panel.append(planRow(it));
-      planBody.append(panel);
-      const hint=el("div","vhint");
-      hint.textContent=planFocus==="drop"
-        ? "Tap a task to archive it"
-        : "Tap a task to move or reschedule it";
-      planBody.append(hint);
-      return;
-    }
-
-    if(!(d.tray||[]).length && !QKEYS.some(k=>(d[k]||[]).length)){
-      const box=el("div","tv-empty");
-      const g=el("span","glyph"); g.textContent="⌗";
-      const p=el("p"); p.textContent="Nothing to sort.";
-      const s=el("p"); s.style.fontSize=".78rem"; s.style.color="var(--faint)";
-      s.textContent="Captures land here once you write them.";
-      box.append(g,p,s); planBody.append(box);
-      return;
-    }
-
-    const grid=el("div","matrix");
-    for(const qk of QKEYS){
-      const items=d[qk]||[];
-      const cell=el("button","quad"+(items.length?"":" empty"));
-      const h=el("div","qh");
-      h.append(el("span","qdot q-"+qk));
-      const t=el("span"); t.textContent=QMETA[qk].label; h.append(t);
-      const cnt=el("div","cnt"); cnt.textContent=items.length;
-      cell.append(h,cnt);
-      if(items.length){
-        const pk=el("div","peek");
-        pk.textContent=items.slice(0,2).map(i=>i.text).join(" · ");
-        cell.append(pk);
-      }
-      cell.addEventListener("click",()=>{ planFocus=qk; renderPlan(); });
-      grid.append(cell);
-    }
-    planBody.append(grid);
-  }
-
-  $("planRefresh").addEventListener("click",()=>{
-    if(planFocus){ planFocus=null; renderPlan(); }   // ⊞ back to the board
-    else fetchPlan();
-  });
-
-  // ── composer flame ──
-  let flameLevel=0;
-  const flameBtn=$("flameBtn");
-  function paintFlame(){
-    flameBtn.classList.toggle("l1", flameLevel===1);
-    flameBtn.classList.toggle("l2", flameLevel===2);
-    flameBtn.textContent=flameLevel===2? "!!" : "!";
-  }
-  flameBtn.addEventListener("click",()=>{
-    flameLevel=(flameLevel+1)%3; paintFlame();
-    if(flameLevel) showToast(flameLevel===1?
-      "marked important — triage decides do vs schedule" :
-      "urgent + important — straight to do");
-  });
 
   // ── outside list (and any `list` pin) ──
   // Fetch + render only. Never switches views — switchView() calls this when
@@ -1611,7 +1096,6 @@
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden) return;
     if(curView==="today" && Date.now()-todayFetchedAt > TODAY_STALE_MS) fetchToday();
-    if(curView==="plan" && Date.now()-planFetchedAt > TODAY_STALE_MS) fetchPlan();
     if(curView==="outside" && listPath) openList(listPath, listLabel);
   });
 
@@ -1622,14 +1106,13 @@
   // ── boot ───────────────────────────────
   // the list views start closed — see switchView for why `hidden` alone
   // isn't enough to keep them off the capture screen
-  for(const vw of [viewPlan, viewToday, viewOutside]){ vw.hidden=true; vw.style.display="none"; }
+  for(const vw of [viewToday, viewOutside]){ vw.hidden=true; vw.style.display="none"; }
   // restore queued items into the session view so nothing feels lost
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
   render(); renderPins(); autosize(); setComposeTarget(composeTarget);
   // #today deep link — /daily's 8am push lands here
   if(location.hash==="#today" && cfg.url) switchView("today");
-  if(location.hash==="#plan" && cfg.url) switchView("plan");
   if(location.hash==="#outside" && cfg.url) switchView("outside");
   if(!cfg.url) setTimeout(openSheet, 350);
   flush();
