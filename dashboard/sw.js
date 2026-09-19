@@ -4,7 +4,7 @@
 //
 // BUMP `CACHE` ON EVERY index.html CHANGE. The shell is cache-first, so a
 // stale version string means you keep running the old board.
-const CACHE = "board-shell-v1";
+const CACHE = "board-shell-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./sortable.min.js"];
 
 self.addEventListener("install", (e) => {

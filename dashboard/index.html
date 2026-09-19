@@ -258,6 +258,10 @@
   let cfg = LS.get("inbox.cfg", { url:"", token:"" });
 
   let data = null;           // the last /board payload
+  let fetchedAt = 0;         // when, for the staleness guard
+  let ctxCache = {};         // weather by date — it does not move in minutes
+  const STALE_MS = 90000;
+  const CTX_STALE_MS = 900000;
   let viewDate = null;       // YYYY-MM-DD being planned
   let routeView = false;     // shade by where /defer would send each task
   let busy = false;          // one write in flight at a time
@@ -706,6 +710,9 @@
     await move(text, from, {pane:"inbox"});
   }
 
+  // /check returns the same shape /board's `day` has, minus `sections`.
+  function res_day(j){ return j; }
+
   async function tick(r, item, addr){
     if(busy) return;
     busy = true;
@@ -714,15 +721,24 @@
     try{
       const res = await api("/check",{method:"POST",
         body:JSON.stringify({date:viewDate, text:item.text, checked:want})});
-      if(res.status===404){ toast("changed in the vault — refreshing"); }
-      else if(!res.ok) throw new Error("HTTP "+res.status);
+      if(res.status===404){
+        toast("changed in the vault — refreshing");
+        busy=false; r.classList.remove("pending"); return refresh();
+      }
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      // /check hands back the whole day, so a tick costs ONE request. The
+      // source panes cannot have changed — a tick only touches the month
+      // file — so there is nothing to reload them for.
+      data.day = Object.assign(res_day(await res.json()), {sections:data.day.sections});
       setConn("online");
+      busy=false; r.classList.remove("pending");
+      return render();
     }catch(e){
       r.classList.toggle("done", item.checked);
       toastBad("couldn't update");
       setConn("offline");
-    }finally{
-      busy=false; r.classList.remove("pending"); refresh();
+      busy=false; r.classList.remove("pending");
+      return refresh();
     }
   }
 
@@ -828,14 +844,21 @@
     if(!cfg.url){ openSheet(); return; }
     setConn(null,"loading…");
     try{
+      // /board carries the tasks, the blocks, their capacities and the
+      // day's events. /context is fetched only for the weather line, and
+      // only when this date's copy is older than 15 minutes — a forecast
+      // does not move between two moves of a task.
+      const cached = ctxCache[viewDate];
+      const needCtx = !cached || Date.now()-cached.at > CTX_STALE_MS;
       const [b, c] = await Promise.all([
         api("/board?date="+encodeURIComponent(viewDate)).then(r=>{
           if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }),
-        // live context — weather, events, block capacities. Optional: a
-        // Calendar outage costs the strip, not the board.
-        api("/context").then(r=>r.ok?r.json():null).catch(()=>null)
+        needCtx ? api("/context?date="+encodeURIComponent(viewDate))
+                    .then(r=>r.ok?r.json():null).catch(()=>null)
+                : Promise.resolve(cached.data)
       ]);
-      data = b; data.context = c;
+      if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
+      data = b; data.context = c; fetchedAt = Date.now();
       renderCtx(c);
       setConn("online");
       render();
@@ -878,7 +901,14 @@
     if(e.key==="r"){ refresh(); }
     if(e.key==="Escape"){ closeSheets(); }
   });
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(); });
+  // Returning to the tab refreshes only if the board is actually stale.
+  // Without the guard every alt-tab cost a full load — six GitHub reads and
+  // a calendar call — which is a lot of Cloud Run for a screen that has not
+  // changed. ↻ forces one whenever you want certainty.
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden) return;
+    if(Date.now()-fetchedAt > STALE_MS) refresh();
+  });
   window.addEventListener("online",()=>setConn("online"));
   window.addEventListener("offline",()=>setConn("offline"));
 
