@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0d1513" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="../icon-192.png" />
+<title>Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* Same palette as the capture app — this is the same system, seen from a
+     desk instead of a phone. */
+  :root{
+    --bg:#0d1513; --bg-2:#111d1a; --surface:#15211e; --surface-2:#1b2925;
+    --line:#25332e; --ink:#e9e6da; --muted:#8a978f; --faint:#5c6863;
+    --accent:#e3a857; --accent-dim:#b9863f;
+    --ok:#7fb88a; --warn:#d98a6a;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --ui:"Hanken Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); font-family:var(--ui);
+    -webkit-font-smoothing:antialiased; display:flex; flex-direction:column;
+    min-height:100dvh; overflow:hidden;
+  }
+
+  /* ── header ───────────────────────────── */
+  header{
+    display:flex; align-items:center; gap:.7rem; flex:none;
+    padding:.7rem 1.1rem; border-bottom:1px solid var(--line);
+  }
+  .mark{font-size:1.05rem; font-weight:700; letter-spacing:-.02em}
+  .nav{display:flex; align-items:center; gap:.2rem; margin-left:.5rem}
+  .nav button{
+    background:none; border:1px solid transparent; color:var(--muted);
+    font:inherit; font-size:.9rem; padding:.2rem .5rem; border-radius:7px; cursor:pointer;
+  }
+  .nav button:hover{color:var(--ink); border-color:var(--line)}
+  .day-label{font-weight:600; font-size:.95rem; min-width:9.5rem; text-align:center}
+  .day-label .rel{color:var(--faint); font-weight:400; font-size:.8rem; margin-left:.35rem}
+  .ctx{
+    font-family:var(--mono); font-size:.72rem; color:var(--muted);
+    display:flex; gap:.45rem; align-items:center; overflow:hidden;
+    white-space:nowrap; text-overflow:ellipsis;
+  }
+  .ctx .sep{color:var(--faint)}
+  .hdr-right{margin-left:auto; display:flex; align-items:center; gap:.5rem; flex:none}
+  .status-txt{font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--faint)}
+  .dot.online{background:var(--ok)} .dot.offline{background:var(--warn)}
+  .ghost{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+    font:inherit; font-size:.76rem; padding:.32rem .6rem; border-radius:8px; cursor:pointer;
+  }
+  .ghost:hover{color:var(--ink); border-color:var(--accent-dim)}
+  .ghost.on{color:var(--accent); border-color:var(--accent-dim)}
+  .ghost:disabled{opacity:.45; cursor:default}
+
+  /* ── layout: today wide, sources in a rail ── */
+  .board{flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);
+         gap:1rem; padding:1rem 1.1rem 1.2rem; overflow:hidden}
+  .col{min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.7rem;
+       scrollbar-width:thin; scrollbar-color:var(--line) transparent; padding-right:.2rem}
+  .col::-webkit-scrollbar{width:8px}
+  .col::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:14px;
+        padding:.6rem .8rem .7rem}
+  .card.day{padding:.7rem .9rem 1rem}
+  .card-head{
+    display:flex; align-items:baseline; gap:.5rem; padding:.15rem 0 .45rem;
+    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--muted);
+  }
+  .card-head .n{margin-left:auto; font-family:var(--mono); font-size:.68rem;
+                letter-spacing:0; color:var(--faint); font-weight:500; text-transform:none}
+  .card-head .path{font-family:var(--mono); font-size:.62rem; letter-spacing:0;
+                   text-transform:none; color:var(--faint); font-weight:400}
+
+  /* ── day blocks ───────────────────────── */
+  .blk{border:1px dashed var(--line); border-radius:11px; padding:.3rem .6rem .5rem; margin-bottom:.55rem}
+  .blk.now{border-color:var(--accent-dim)}
+  .blk.over .cap{color:var(--warn)}
+  .blk-head{display:flex; align-items:baseline; gap:.5rem; padding:.3rem 0 .15rem;
+            font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+            color:var(--faint)}
+  .blk.now .blk-head{color:var(--accent)}
+  .blk-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
+                  text-transform:none; color:var(--faint); font-weight:500}
+  .cap{margin-left:auto; font-family:var(--mono); font-size:.66rem; letter-spacing:0;
+       text-transform:none; color:var(--faint); font-weight:500}
+  .evt{font-family:var(--mono); font-size:.74rem; color:var(--muted);
+       display:flex; gap:.5rem; padding:.2rem 0 .2rem .1rem}
+  .evt .when{color:var(--accent-dim); font-weight:600; flex:none}
+
+  /* ── a draggable line ─────────────────── */
+  .lane{min-height:34px; border-radius:8px; padding:1px 0}
+  .lane.mini{min-height:26px}
+  .row{
+    display:flex; align-items:flex-start; gap:.5rem; padding:.34rem .4rem;
+    border-radius:8px; cursor:grab; background:var(--surface);
+    border:1px solid transparent; user-select:none; -webkit-user-select:none;
+  }
+  .col .card .row:hover{border-color:var(--line); background:var(--surface-2)}
+  .row.dragging{opacity:.4}
+  .row.ghost-row{background:var(--surface-2); border:1px dashed var(--accent-dim)}
+  .row .cb{
+    flex:none; width:17px; height:17px; border:1.5px solid var(--faint); border-radius:5px;
+    margin-top:.1rem; display:flex; align-items:center; justify-content:center;
+    color:transparent; cursor:pointer;
+  }
+  .row.done .cb{background:var(--ok); border-color:var(--ok); color:#10231a}
+  .row.pending .cb{border-color:var(--accent)}
+  .row .tx{font-family:var(--mono); font-size:.82rem; line-height:1.45; word-break:break-word; flex:1}
+  .row.done .tx{color:var(--faint); text-decoration:line-through}
+  .row .tx[contenteditable="true"]{outline:none; border-bottom:1px solid var(--accent-dim)}
+  .row.plain .cb{display:none}
+  .row.plain .tx{color:var(--muted)}
+  .badge{display:inline-block; font-family:var(--mono); font-size:.6rem; color:var(--accent-dim);
+         border:1px solid var(--line); border-radius:5px; padding:0 .28rem; margin-left:.4rem;
+         vertical-align:1px}
+  .badge.proj{color:var(--accent); border-color:var(--accent-dim)}
+  .badge.route{color:var(--faint)}
+  .rowacts{display:flex; gap:.15rem; flex:none; opacity:0; transition:opacity .12s}
+  .row:hover .rowacts{opacity:1}
+  .rowacts button{background:none; border:none; color:var(--faint); cursor:pointer;
+                  font-size:.78rem; padding:0 .2rem; line-height:1}
+  .rowacts button:hover{color:var(--accent)}
+
+  /* ── group headings inside a card ─────── */
+  .grp{display:flex; align-items:baseline; gap:.4rem; padding:.45rem .1rem .1rem;
+       font-size:.74rem; color:var(--accent); font-weight:600; cursor:pointer}
+  .grp .chev{color:var(--faint); font-size:.6rem}
+  .grp .n{margin-left:auto; font-family:var(--mono); font-size:.64rem; color:var(--faint); font-weight:400}
+  .grp.date{color:var(--muted)}
+  .grp.date.overdue{color:var(--warn)}
+  .sub{font-size:.66rem; color:var(--faint); padding:.2rem .1rem 0}
+  .adder{
+    width:100%; background:none; border:none; border-top:1px dashed var(--line);
+    color:var(--faint); font:inherit; font-family:var(--mono); font-size:.76rem;
+    padding:.35rem .4rem; margin-top:.2rem; outline:none;
+  }
+  .adder:focus{color:var(--ink); border-top-color:var(--accent-dim)}
+  .adder::placeholder{color:var(--faint)}
+  .empty{color:var(--faint); font-size:.78rem; padding:.5rem .4rem}
+
+  /* ── trash ────────────────────────────── */
+  .trash{
+    border:1px dashed var(--line); border-radius:11px; color:var(--faint);
+    font-size:.74rem; text-align:center; padding:.5rem; min-height:38px;
+  }
+  .trash.hot{border-color:var(--warn); color:var(--warn)}
+
+  /* ── toast + sheet ────────────────────── */
+  .toast{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:1.2rem;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
+    font-size:.82rem; padding:.55rem .95rem; border-radius:10px; z-index:30;
+    opacity:0; transition:opacity .2s; pointer-events:none; max-width:70vw;
+  }
+  .toast.show{opacity:1; pointer-events:auto}
+  .toast .undo{background:none; border:none; color:var(--accent); font:inherit;
+               font-weight:700; margin-left:.7rem; cursor:pointer; padding:0}
+  .toast.bad{border-color:var(--warn)}
+  .scrim{position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:10;
+         opacity:0; pointer-events:none; transition:opacity .2s}
+  .scrim.open{opacity:1; pointer-events:auto}
+  .sheet{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(.97);
+    width:min(440px,92vw); z-index:11; background:var(--bg-2);
+    border:1px solid var(--line); border-radius:16px; padding:1.1rem 1.25rem 1.3rem;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+  }
+  .sheet.open{opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1)}
+  .sheet h2{margin:.1rem 0 .8rem; font-size:1rem; font-weight:700}
+  .sheet label{display:block; font-size:.74rem; color:var(--muted); margin:.8rem 0 .3rem; font-weight:600}
+  .sheet input{width:100%; background:var(--surface); border:1px solid var(--line);
+               border-radius:9px; color:var(--ink); font-family:var(--mono);
+               font-size:.85rem; padding:.55rem .7rem; outline:none}
+  .sheet input:focus{border-color:var(--accent-dim)}
+  .rowb{display:flex; gap:.6rem; align-items:center; margin-top:1.1rem}
+  .save{margin-left:auto; background:var(--accent); color:#1a1206; border:none;
+        border-radius:9px; font-weight:700; font-size:.85rem; padding:.55rem 1rem; cursor:pointer}
+  .datelist{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.3rem}
+  .datelist button{background:var(--surface); border:1px solid var(--line); color:var(--ink);
+                   font:inherit; font-size:.8rem; padding:.4rem .6rem; border-radius:8px; cursor:pointer}
+  .datelist button:hover{border-color:var(--accent-dim)}
+  .warnbar{background:var(--surface-2); border:1px solid var(--warn); border-radius:10px;
+           color:var(--warn); font-size:.76rem; padding:.45rem .7rem; margin-bottom:.2rem}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body>
+  <header>
+    <span class="mark">board</span>
+    <div class="nav">
+      <button id="prevDay" aria-label="Previous day">‹</button>
+      <span class="day-label" id="dayLabel">—</span>
+      <button id="nextDay" aria-label="Next day">›</button>
+      <button id="todayBtn">today</button>
+    </div>
+    <div class="ctx" id="ctx"></div>
+    <div class="hdr-right">
+      <button class="ghost" id="routeBtn" title="Shade each task by where /defer would send it tomorrow">defer view</button>
+      <button class="ghost" id="buildBtn" hidden>build the day</button>
+      <button class="ghost" id="refreshBtn">↻</button>
+      <span class="dot" id="dot"></span>
+      <span class="status-txt" id="statusTxt">—</span>
+      <button class="ghost" id="gearBtn" aria-label="Settings">⚙</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="col" id="colDay"></div>
+    <div class="col" id="colSrc"></div>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Settings">
+    <h2>Connection</h2>
+    <p style="margin:0;font-size:.76rem;color:var(--faint)">Shared with the capture app on this origin.</p>
+    <label for="cfgUrl">Backend URL</label>
+    <input id="cfgUrl" inputmode="url" placeholder="https://your-service-xxxx.run.app" />
+    <label for="cfgToken">Capture token</label>
+    <input id="cfgToken" type="password" placeholder="the shared secret your backend expects" />
+    <div class="rowb"><button class="save" id="saveBtn">Save</button></div>
+  </div>
+  <div class="sheet" id="dateSheet" role="dialog" aria-label="Pick a date">
+    <h2 id="dateTitle">Schedule for…</h2>
+    <div class="datelist" id="dateList"></div>
+    <label for="dateInput">Or a specific date</label>
+    <input id="dateInput" type="date" />
+    <div class="rowb"><button class="save" id="dateSave">Schedule</button></div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+<script src="sortable.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ── config ─────────────────────────────
+  // Shared with the capture app: same origin, same localStorage, so the
+  // token is entered once. Writing back the whole object keeps any key the
+  // capture app owns (pins, queue targets) intact.
+  const LS = {
+    get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+    set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  };
+  const $ = id => document.getElementById(id);
+  let cfg = LS.get("inbox.cfg", { url:"", token:"" });
+
+  let data = null;           // the last /board payload
+  let viewDate = null;       // YYYY-MM-DD being planned
+  let routeView = false;     // shade by where /defer would send each task
+  let busy = false;          // one write in flight at a time
+  const collapsed = new Set(LS.get("board.collapsed", []));
+
+  // ── api ────────────────────────────────
+  function api(path, opts){
+    return fetch(cfg.url.replace(/\/+$/,"")+path, Object.assign({
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") }
+    }, opts||{}));
+  }
+  function setConn(state, note){
+    $("dot").className = "dot"+(state?" "+state:"");
+    $("statusTxt").textContent = note || (state==="online"?"synced":state==="offline"?"offline":"—");
+  }
+
+  // ── dates ──────────────────────────────
+  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function parseD(s){ const p=(s||"").split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function isoD(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function fmtD(s){ const d=parseD(s); return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]; }
+  function shiftD(s, n){ const d=parseD(s); d.setDate(d.getDate()+n); return isoD(d); }
+  function relD(s){
+    if(!data) return "";
+    const a=parseD(s), b=parseD(data.today);
+    const n=Math.round((a-b)/86400000);
+    return n===0?"today":n===1?"tomorrow":n===-1?"yesterday":n>0?"in "+n+"d":Math.abs(n)+"d ago";
+  }
+  function fmtMin(m){
+    const h=Math.floor(m/60), r=m%60;
+    return h&&r? h+"h"+r+"m" : h? h+"h" : r+"m";
+  }
+
+  // ── small dom helpers ──────────────────
+  function el(tag, cls, txt){
+    const e=document.createElement(tag);
+    if(cls) e.className=cls;
+    if(txt!=null) e.textContent=txt;
+    return e;
+  }
+  const CHECK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  // Where /defer sends an unfinished task, by the `###` section it sits in.
+  // Shown on demand so "what happens if I don't do this" is visible while
+  // you plan rather than discovered the next morning.
+  const ROUTE_LABEL = { daily:"stays", recurring:"stays", project:"→ project",
+                        today:"→ future", misc:"→ future" };
+
+  /** One draggable line. `addr` is the pane address it currently lives at;
+   *  it rides on the element so a drop can name both ends. */
+  function row(item, addr, opts){
+    opts = opts||{};
+    const r = el("div","row"+(item.checked?" done":"")+(opts.plain?" plain":""));
+    r.dataset.text = item.raw || item.text;
+    r.dataset.addr = JSON.stringify(addr);
+    if(item.project) r.dataset.project = item.project;
+    const cb = el("span","cb"); cb.innerHTML = CHECK;
+    if(opts.tickable) cb.addEventListener("click", e=>{ e.stopPropagation(); tick(r, item, addr); });
+    const tx = el("span","tx", item.text);
+    if(item.hint) tx.append(el("span","badge", "~"+fmtMin(item.hint)));
+    if(item.project){
+      const p = el("span","badge proj", item.project.replace(/[\[\]]/g,""));
+      tx.append(p);
+    }
+    if(routeView && opts.route && ROUTE_LABEL[opts.route])
+      tx.append(el("span","badge route", ROUTE_LABEL[opts.route]));
+    const acts = el("div","rowacts");
+    const ed = el("button",null,"✎"); ed.title="Edit"; ed.addEventListener("click", ()=>edit(r, tx, item, addr));
+    const sc = el("button",null,"◷"); sc.title="Schedule for a date";
+    sc.addEventListener("click", ()=>pickDate(t=>move(r.dataset.text, addr, {pane:"future", date:t},
+                                                      r.dataset.project)));
+    acts.append(ed, sc);
+    r.append(cb, tx, acts);
+    return r;
+  }
+
+  /** A drop zone. Every lane declares the address a line dropped into it
+   *  should take; that is the whole protocol between the UI and /move. */
+  function lane(addr, opts){
+    opts = opts||{};
+    const l = el("div","lane"+(opts.mini?" mini":""));
+    l.dataset.addr = JSON.stringify(addr);
+    return l;
+  }
+
+  function group(label, cls, count, key){
+    const g = el("div","grp"+(cls?" "+cls:""));
+    const chev = el("span","chev", collapsed.has(key)?"▸":"▾");
+    g.append(chev, el("span",null,label));
+    if(count!=null) g.append(el("span","n", String(count)));
+    if(key) g.addEventListener("click", ()=>{
+      collapsed.has(key)? collapsed.delete(key) : collapsed.add(key);
+      LS.set("board.collapsed",[...collapsed]); render();
+    });
+    return g;
+  }
+
+  // ── render: the day ────────────────────
+  function render(){
+    if(!data) return;
+    $("dayLabel").innerHTML = "";
+    $("dayLabel").append(el("span",null,fmtD(viewDate)), el("span","rel",relD(viewDate)));
+    $("buildBtn").hidden = data.day.exists || viewDate !== data.today;
+    $("routeBtn").classList.toggle("on", routeView);
+    renderDay();
+    renderSources();
+    wire();
+  }
+
+  function taskIndex(){
+    // text → its `###` section, for the defer-view badges
+    return (data.day.sections)||{};
+  }
+  function norm(s){
+    return (s||"").replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/,"")
+      .replace(/\s*\|\s*[^|]*$/,"").replace(/[\[\]]/g,"")
+      .replace(/\s+/g," ").trim().toLowerCase();
+  }
+
+  function renderDay(){
+    const host = $("colDay"); host.innerHTML = "";
+    const card = el("div","card day");
+    const head = el("div","card-head");
+    head.append(el("span",null,"today"));
+    head.append(el("span","path", data.day.path||""));
+    card.append(head);
+
+    if(!data.day.exists){
+      const e = el("div","empty",
+        viewDate===data.today ? "No list built yet — the 8am run makes it, or build it now."
+                              : "Nothing planned for this day yet. Drop anything here to start it.");
+      card.append(e);
+    }
+
+    // group the day's tasks by block hint, in schedule order. Blocks,
+    // capacities and events all come from /board, computed with the same
+    // helpers /daily budgets with — so "over capacity" here means exactly
+    // what the scheduler means by full.
+    const blocks = data.blocks || [];
+    const names = blocks.map(b=>b.name);
+    const byBlock = new Map(names.map(n=>[n,[]]));
+    const loose = [];
+    const sections = taskIndex();
+    const flat = [];
+    (function walk(nodes, project){
+      for(const n of nodes||[]){
+        if(n.box) flat.push({node:n, project:project});
+        walk(n.children, n.box? project : n.text);
+      }
+    })(data.day.tasks||[], null);
+    for(const f of flat){
+      const b = f.node.block;
+      (b && byBlock.has(b) ? byBlock.get(b) : loose).push(f);
+    }
+
+    const evs = data.events || [];
+    // All-day events belong to no block, so they sit above them rather
+    // than being silently dropped.
+    for(const ev of evs) if(ev.all_day){
+      const e = el("div","evt");
+      e.append(el("span","when","all day"), el("span",null,ev.title));
+      card.append(e);
+    }
+    for(const b of blocks){
+      const name = b.name;
+      const items = byBlock.get(name)||[];
+      const mins = items.reduce((s,f)=>s+(f.node.checked?0:(f.node.hint||20)),0);
+      const cap = b.capacity;
+      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&mins>cap?" over":""));
+      const bh = el("div","blk-head");
+      bh.append(el("span",null,name.toLowerCase()));
+      if(b.label) bh.append(el("span","span", b.label));
+      bh.append(el("span","cap", cap? Math.round(mins)+" / "+cap+" min"
+                                    : (mins?fmtMin(mins):"")));
+      wrap.append(bh);
+      for(const ev of evs) if(inBlock(ev,b)){
+        const e = el("div","evt");
+        e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
+        wrap.append(e);
+      }
+      const l = lane({pane:"day", date:viewDate, block:name});
+      for(const f of items)
+        l.append(row(nodeItem(f), {pane:"day", date:viewDate, block:name},
+                     {tickable:true, route:sections[norm(f.node.text)]}));
+      wrap.append(l);
+      const add = el("input","adder");
+      add.placeholder = "add to "+name.toLowerCase()+"…";
+      add.addEventListener("keydown", e=>{
+        if(e.key!=="Enter" || !add.value.trim()) return;
+        const v = add.value.trim(); add.value="";
+        // A new task is a move whose source happens to hold nothing: the
+        // destination is written, the source clear finds no match and
+        // no-ops. No second endpoint, no capture round trip.
+        move(v, {pane:"inbox"}, {pane:"day", date:viewDate, block:name});
+      });
+      wrap.append(add);
+      card.append(wrap);
+    }
+    if(loose.length){
+      const wrap = el("div","blk");
+      wrap.append(el("div","blk-head","anytime"));
+      const l = lane({pane:"day", date:viewDate});
+      for(const f of loose)
+        l.append(row(nodeItem(f), {pane:"day", date:viewDate},
+                     {tickable:true, route:sections[norm(f.node.text)]}));
+      wrap.append(l);
+      card.append(wrap);
+    }
+    host.append(card);
+
+    const t = el("div","trash","drag here to send back to the inbox");
+    t.id = "trash";
+    host.append(t);
+  }
+
+  function nodeItem(f){
+    return {text:f.node.text, hint:f.node.hint, checked:f.node.checked,
+            project:f.project, raw:f.node.text};
+  }
+  function isNow(b){
+    if(viewDate!==data.today || b.start==null) return false;
+    const d=new Date(), m=d.getHours()*60+d.getMinutes();
+    return m>=b.start && m<b.end;
+  }
+  function inBlock(ev, b){
+    // /board sends event bounds in minutes, so no clock-string parsing.
+    if(b.start==null || ev.start_minutes==null) return false;
+    return ev.start_minutes>=b.start && ev.start_minutes<b.end;
+  }
+
+  // ── render: the sources ────────────────
+  function renderSources(){
+    const host = $("colSrc"); host.innerHTML = "";
+    if((data.missing||[]).length){
+      const w = el("div","warnbar",
+        "not found in the vault: "+data.missing.join(", ")+" — set its path in the service env");
+      host.append(w);
+    }
+    for(const d of collisions()){
+      host.append(el("div","warnbar",
+        "“"+d.text+"” is live in both "+d.a+" and "+d.b
+        +" — they are one task to /check, so ticking one may flip the other"));
+    }
+
+    // future days
+    const fcard = el("div","card");
+    const fh = el("div","card-head");
+    fh.append(el("span",null,"future days"));
+    fcard.append(fh);
+    const days = upcoming();
+    for(const d of days){
+      const key = "f:"+d.date;
+      const g = group(fmtD(d.date)+(d.overdue?" · overdue":""), "date"+(d.overdue?" overdue":""),
+                      d.tasks.length, key);
+      fcard.append(g);
+      if(collapsed.has(key)) continue;
+      const l = lane({pane:"future", date:d.date}, {mini:true});
+      for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
+      fcard.append(l);
+    }
+    host.append(fcard);
+
+    // inbox
+    const icard = el("div","card");
+    const ih = el("div","card-head");
+    ih.append(el("span",null,"inbox"), el("span","n", String(data.inbox.length)));
+    icard.append(ih);
+    const il = lane({pane:"inbox"});
+    for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {}));
+    if(!data.inbox.length) il.append(el("div","empty","clear"));
+    icard.append(il);
+    host.append(icard);
+
+    // top priorities + stalled: same shape, one renderer
+    host.append(projectCard("top priorities", "priorities", data.priorities));
+    host.append(projectCard("stalled / new", "stalled", data.stalled));
+
+    // append and review
+    const acard = el("div","card");
+    const ah = el("div","card-head");
+    ah.append(el("span",null,"append and review"));
+    ah.append(el("span","path", (data.aar.path||"").split("/").pop()));
+    acard.append(ah);
+    for(const c of data.aar.categories){
+      // The three categories you named open by default; the rest start
+      // collapsed. Either way the toggle is remembered, so `collapsed`
+      // holds a deviation from the default rather than an absolute state.
+      const key = "a:"+c.category;
+      const isOpen = c.open ? !collapsed.has(key) : collapsed.has(key);
+      const g = group(c.category, null, c.items.length, key);
+      g.querySelector(".chev").textContent = isOpen? "▾" : "▸";
+      acard.append(g);
+      if(!isOpen) continue;
+      const l = lane({pane:"aar", category:c.category}, {mini:true});
+      for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
+      acard.append(l);
+    }
+    host.append(acard);
+  }
+
+  function projectCard(title, pane, d){
+    const card = el("div","card");
+    const h = el("div","card-head");
+    h.append(el("span",null,title));
+    h.append(el("span","path",(d.path||"").split("/").pop()));
+    card.append(h);
+    for(const p of d.projects){
+      const key = pane+":"+p.body;
+      const g = group(p.display, null, p.tasks.length, key);
+      card.append(g);
+      if(collapsed.has(key)) continue;
+      const l = lane({pane:pane, project:p.body}, {mini:true});
+      for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
+      if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+      card.append(l);
+    }
+    if(d.tasks && d.tasks.length!==undefined){
+      card.append(el("div","sub","tasks"));
+      const l = lane({pane:pane}, {mini:true});
+      for(const t of d.tasks) l.append(row(t, {pane:pane}, {}));
+      card.append(l);
+    }
+    if(d.ideas && d.ideas.length){
+      const key = pane+":ideas";
+      card.append(group("ideas", null, d.ideas.length, key));
+      if(!collapsed.has(key)){
+        const l = lane({pane:pane, ideas:true}, {mini:true});
+        for(const t of d.ideas) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
+        card.append(l);
+      }
+    }
+    return card;
+  }
+
+  function upcoming(){
+    const out = (data.future||[]).filter(d=>d.tasks.length || d.date>=data.today);
+    const have = new Set(out.map(d=>d.date));
+    // always offer the next few days as drop targets, even when empty
+    for(let i=0;i<5;i++){
+      const dt = shiftD(data.today, i);
+      if(!have.has(dt)) out.push({date:dt, overdue:false, tasks:[]});
+    }
+    out.sort((a,b)=>a.date<b.date?-1:1);
+    return out.slice(0,14);
+  }
+
+  // Two open tasks that normalize to the same key are one task as far as
+  // /check and /move are concerned, so ticking one may flip the other.
+  // Checked ACROSS panes, not just within the day: the same text living in
+  // both the day and its source note means /daily's clear half-failed, and
+  // that is exactly the state the one-live-copy rule exists to catch.
+  function collisions(){
+    const seen = new Map(), out = [];
+    const add = (t, where)=>{
+      const k = norm(t);
+      if(!k) return;
+      if(seen.has(k)){
+        const first = seen.get(k);
+        if(!out.some(x=>x.key===k)) out.push({key:k, text:t, a:first, b:where});
+      } else seen.set(k, where);
+    };
+    (function walk(ns){
+      for(const n of ns||[]){ if(n.box && !n.checked) add(n.text, "today"); walk(n.children); }
+    })(data.day.tasks||[]);
+    for(const t of data.inbox) add(t.text, "the inbox");
+    for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
+    for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
+      for(const p of src[1].projects) for(const t of p.tasks) add(t.text, src[0]);
+    return out;
+  }
+
+  // ── drag wiring ────────────────────────
+  function wire(){
+    document.querySelectorAll(".lane").forEach(l=>{
+      Sortable.create(l, {
+        group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
+        emptyInsertThreshold:14, filter:".empty,.adder",
+        onEnd: onDrop
+      });
+    });
+    const t = $("trash");
+    if(t) Sortable.create(t, {
+      group:{name:"vault", pull:false, put:true}, animation:140,
+      onAdd: e=>{
+        const from = JSON.parse(e.from.dataset.addr);
+        const text = e.item.dataset.text;
+        e.item.remove();
+        remove(text, from);
+      }
+    });
+  }
+
+  function onDrop(e){
+    const from = JSON.parse(e.from.dataset.addr||"{}");
+    const to   = JSON.parse(e.to.dataset.addr||"{}");
+    const text = e.item.dataset.text;
+    const project = e.item.dataset.project || null;
+    const samePane = e.from === e.to;
+    if(samePane && e.oldIndex === e.newIndex) return;
+    // position matters only where order carries meaning: the
+    // append-and-review note (top = kept in view) and a project's next
+    // action (first open subtask is what /daily surfaces).
+    move(text, from, to, project, e.newIndex);
+  }
+
+  // ── mutations ──────────────────────────
+  async function move(text, from, to, project, position, newText){
+    if(busy){ toast("one at a time — still saving"); return refresh(); }
+    if(!cfg.url){ openSheet(); return; }
+    busy = true; setConn(null, "saving…");
+    const body = { text, from:from, to:to, position:position };
+    if(newText) body.new_text = newText;
+    // The project a line already carries travels with it unless the drop
+    // target names its own. That is what keeps a dated project task tied
+    // to its project all the way through Future Days and back.
+    if(project && !to.project) body.from = Object.assign({}, from, {project:from.project||project});
+    try{
+      const r = await api("/move", {method:"POST", body:JSON.stringify(body)});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok){
+        if(j.duplicate){
+          toastBad("saved to the destination, but the original is still in place");
+        } else throw new Error(j.error||("HTTP "+r.status));
+      } else {
+        offerUndo(text, from, to, j.project);
+      }
+      setConn("online");
+    }catch(err){
+      toastBad("couldn't move — "+err.message);
+      setConn("offline");
+    }finally{
+      busy = false;
+      await refresh();
+    }
+  }
+
+  // There is no delete endpoint, and that is deliberate: a drag that ends
+  // badly should never destroy a line. Dropping on the trash sends it back
+  // to the inbox, where you can see it and decide. Emptying the inbox is a
+  // vault job, not something a stray drop can do.
+  async function remove(text, from){
+    if(from.pane==="inbox"){ toast("already in the inbox"); return refresh(); }
+    await move(text, from, {pane:"inbox"});
+  }
+
+  async function tick(r, item, addr){
+    if(busy) return;
+    busy = true;
+    const want = !item.checked;
+    r.classList.add("pending"); r.classList.toggle("done", want);
+    try{
+      const res = await api("/check",{method:"POST",
+        body:JSON.stringify({date:viewDate, text:item.text, checked:want})});
+      if(res.status===404){ toast("changed in the vault — refreshing"); }
+      else if(!res.ok) throw new Error("HTTP "+res.status);
+      setConn("online");
+    }catch(e){
+      r.classList.toggle("done", item.checked);
+      toastBad("couldn't update");
+      setConn("offline");
+    }finally{
+      busy=false; r.classList.remove("pending"); refresh();
+    }
+  }
+
+  function edit(r, tx, item, addr){
+    const before = item.raw || item.text;
+    tx.querySelectorAll(".badge").forEach(b=>b.remove());
+    tx.setAttribute("contenteditable","true");
+    tx.focus();
+    const sel=getSelection(), rg=document.createRange();
+    rg.selectNodeContents(tx); sel.removeAllRanges(); sel.addRange(rg);
+    // Removing `contenteditable` blurs the node, which would re-enter this
+    // handler and fire the write twice. One latch, checked first.
+    let settled = false;
+    const done = async (save)=>{
+      if(settled) return;
+      settled = true;
+      tx.removeAttribute("contenteditable");
+      const after = tx.textContent.trim();
+      if(!save || !after || after===item.text) return render();
+      // A rename is ONE /move: the new text is written and the old line
+      // cleared in the same call, so it cannot half-happen.
+      await move(before, addr, addr, r.dataset.project, null, after);
+    };
+    tx.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ e.preventDefault(); done(true); }
+      if(e.key==="Escape"){ done(false); }
+    });
+    tx.addEventListener("blur", ()=>done(true));
+  }
+
+  // ── undo ───────────────────────────────
+  let toastTimer=null;
+  function toast(msg){
+    const t=$("toast"); t.className="toast show"; t.textContent=msg;
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 2600);
+  }
+  function toastBad(msg){
+    const t=$("toast"); t.className="toast bad show"; t.textContent=msg;
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 4200);
+  }
+  function offerUndo(text, from, to, project){
+    const t=$("toast"); t.className="toast show"; t.innerHTML="";
+    t.append(el("span",null, describe(to)));
+    const b=el("button","undo","undo");
+    b.addEventListener("click", async ()=>{
+      t.classList.remove("show");
+      // undo is the same call with the ends swapped — a real inverse,
+      // because a move is symmetric by construction
+      await move(text, to, from, project);
+    });
+    t.append(b);
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 5000);
+  }
+  function describe(to){
+    if(to.pane==="day") return "planned for "+fmtD(to.date)+(to.block?" · "+to.block.toLowerCase():"");
+    if(to.pane==="future") return "scheduled for "+fmtD(to.date);
+    if(to.pane==="inbox") return "back to the inbox";
+    if(to.pane==="aar") return "filed under "+to.category;
+    if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
+    return "moved";
+  }
+
+  // ── date picker ────────────────────────
+  let dateCb = null;
+  function pickDate(cb){
+    dateCb = cb;
+    const list=$("dateList"); list.innerHTML="";
+    for(let i=1;i<=7;i++){
+      const d=shiftD(data.today,i);
+      const b=el("button",null,fmtD(d));
+      b.addEventListener("click",()=>{ closeSheets(); cb(d); });
+      list.append(b);
+    }
+    $("dateInput").value = shiftD(data.today,1);
+    $("scrim").classList.add("open"); $("dateSheet").classList.add("open");
+  }
+  $("dateSave").addEventListener("click",()=>{
+    const v=$("dateInput").value;
+    if(v && dateCb){ closeSheets(); dateCb(v); }
+  });
+
+  // ── settings ───────────────────────────
+  function openSheet(){
+    $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
+    $("scrim").classList.add("open"); $("sheet").classList.add("open");
+  }
+  function closeSheets(){
+    $("scrim").classList.remove("open");
+    $("sheet").classList.remove("open"); $("dateSheet").classList.remove("open");
+  }
+  $("gearBtn").addEventListener("click",openSheet);
+  $("scrim").addEventListener("click",closeSheets);
+  $("saveBtn").addEventListener("click",()=>{
+    const all = LS.get("inbox.cfg", {});
+    all.url = $("cfgUrl").value.trim();
+    all.token = $("cfgToken").value;
+    LS.set("inbox.cfg", all);
+    cfg = all; closeSheets(); refresh();
+  });
+
+  // ── load ───────────────────────────────
+  async function refresh(){
+    if(!cfg.url){ openSheet(); return; }
+    setConn(null,"loading…");
+    try{
+      const [b, c] = await Promise.all([
+        api("/board?date="+encodeURIComponent(viewDate)).then(r=>{
+          if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }),
+        // live context — weather, events, block capacities. Optional: a
+        // Calendar outage costs the strip, not the board.
+        api("/context").then(r=>r.ok?r.json():null).catch(()=>null)
+      ]);
+      data = b; data.context = c;
+      renderCtx(c);
+      setConn("online");
+      render();
+    }catch(e){
+      setConn("offline", "couldn't load");
+      toastBad("couldn't load the board — "+e.message);
+    }
+  }
+  function renderCtx(c){
+    const host=$("ctx"); host.innerHTML="";
+    if(!c) return;
+    const bits=[];
+    if(c.weather&&c.weather.summary) bits.push((c.weather.place?c.weather.place+" ":"")+c.weather.summary);
+    const n=(c.events||[]).length;
+    bits.push(n? n+" event"+(n===1?"":"s") : "no events");
+    bits.forEach((b,i)=>{
+      if(i) host.append(el("span","sep","·"));
+      host.append(el("span",null,b));
+    });
+  }
+
+  $("prevDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,-1); refresh(); });
+  $("nextDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,1); refresh(); });
+  $("todayBtn").addEventListener("click",()=>{ viewDate=data?data.today:viewDate; refresh(); });
+  $("refreshBtn").addEventListener("click",refresh);
+  $("routeBtn").addEventListener("click",()=>{ routeView=!routeView; render(); });
+  $("buildBtn").addEventListener("click",async()=>{
+    $("buildBtn").disabled=true; setConn(null,"building…");
+    try{
+      const r=await api("/daily",{method:"POST", body:"{}"});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      toast("day built");
+    }catch(e){ toastBad("couldn't build the day"); }
+    finally{ $("buildBtn").disabled=false; refresh(); }
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.target.matches("input,[contenteditable=true]")) return;
+    if(e.key==="ArrowLeft"){ viewDate=shiftD(viewDate,-1); refresh(); }
+    if(e.key==="ArrowRight"){ viewDate=shiftD(viewDate,1); refresh(); }
+    if(e.key==="r"){ refresh(); }
+    if(e.key==="Escape"){ closeSheets(); }
+  });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(); });
+  window.addEventListener("online",()=>setConn("online"));
+  window.addEventListener("offline",()=>setConn("offline"));
+
+  const now=new Date();
+  viewDate = isoD(now);
+  setConn(navigator.onLine?"online":"offline");
+  if(!cfg.url) setTimeout(openSheet,300); else refresh();
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
