@@ -30,6 +30,8 @@ the vault as it stands; override if you move them.
 | `STALLED_PATH` | `Stalled, New Project List.md` |
 | `AAR_OPEN_CATEGORIES` | `India things to do,Restaurants,To Watch` |
 | `FUTURE_HORIZON_DAYS` | `14` |
+| `DROPPED_PATH` | `30-Tasks/Dropped.md` |
+| `DROPPED_SHOW_DAYS` | `7` |
 
 Everything else — the priorities note, the inbox, Future Days, the month
 files, the block schedule — comes from the variables already set.
@@ -67,11 +69,51 @@ a duplicate, which the next load flags, never a lost task.
 | a Future Days date | under that date, nested under its project bullet if it has one |
 | a project | a subtask of that project |
 | an append-and-review category | a plain bullet at the position you dropped it |
-| the trash strip | back to the inbox — nothing is ever destroyed |
+| the strip at the bottom | dropped — logged in `Dropped.md`, not destroyed |
 
 Order matters in two places, so reordering is a real edit: a project's
 first open subtask is its next action, and the top of an
 append-and-review category is what stays in view.
+
+## Dropping
+
+There is no delete. `×` on a row, the strip at the bottom, or `Backspace`
+on a focused row all do the same thing: move the line to
+`30-Tasks/Dropped.md` under today's date, carrying where it came from.
+
+```markdown
+## 2026-09-19
+- [ ] Faceless youtube channel %%from: stalled%%
+- [ ] Soccer cleats PHANTOM VENOM %%from: aar · To buy%%
+```
+
+The `%%…%%` mark is an Obsidian comment, so it is invisible in reading
+view, and it is the same provenance convention `%%ai%%` already uses. It
+never becomes part of a task's identity.
+
+Two reasons this is a move rather than an erasure. A stray drag should
+never destroy anything — so there is no confirmation dialog, just a
+five-second undo and a file you can open. And the system had no way to say
+no to a task: `Dropped.md` is the only record of what you chose not to do,
+which makes "what do I keep abandoning, and how long did it survive first"
+answerable for the first time.
+
+The graveyard card shows the last seven days, collapsed, newest first. It
+is a drag source like any other pane, so restoring is just dragging a line
+back out — or `◷` to schedule it for a date. A completed task in a month
+file has no `×`: that is the record.
+
+## Reloading is manual
+
+The board never reloads itself. A drag writes to the vault and leaves the
+row where you dropped it — it does not re-fetch, because rebuilding the
+whole board after every move threw away your scroll position and the
+groups you had open, and moved the lanes out from under the next drag.
+
+`↻` reloads. So does changing day, and so does an undo. When something is
+unsaved or stale the status line says so (`edited · ↻`, `4m old · ↻`)
+rather than acting on it. A failed move reloads on its own, because at
+that point the screen and the vault disagree.
 
 ## The rest of it
 
@@ -86,7 +128,10 @@ append-and-review category is what stays in view.
 - **`✎`** renames in place, **`◷`** schedules for a date.
 - **Undo** on every move, for five seconds. It is the same call with the
   ends swapped.
-- **Keys**: `←` `→` change day, `r` refreshes, `Esc` closes a sheet.
+- **Keys**: `←` `→` change day, `r` reloads, `Esc` closes a sheet,
+  `Backspace` drops the focused row.
+- **While dragging**, every lane shows its edge, the one that will catch
+  the drop is highlighted, and its name floats beside the pointer.
 - A warning bar appears when two open tasks normalize to the same text,
   because `/check` cannot tell them apart.
 

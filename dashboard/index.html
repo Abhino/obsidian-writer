@@ -102,6 +102,23 @@
   /* ── a draggable line ─────────────────── */
   .lane{min-height:34px; border-radius:8px; padding:1px 0}
   .lane.mini{min-height:26px}
+  /* While a drag is live, every lane shows its own edge and the one under
+     the pointer lights up. A drop should never be a guess about which of
+     twenty small targets is going to catch it. */
+  body.dragging .lane{outline:1px dashed var(--line); outline-offset:1px}
+  body.dragging .lane.over{outline:1.5px solid var(--accent); background:rgba(227,168,87,.07)}
+  /* The strip grows while a drag is live: the day card shrinks as the row
+     leaves it, so a fixed-size target slides out from under the pointer. */
+  body.dragging .trash{border-color:var(--warn); color:var(--warn); min-height:54px;
+                       display:flex; align-items:center; justify-content:center}
+  body.dragging .trash.over{outline-color:var(--warn); background:rgba(217,138,106,.08)}
+  .droptag{
+    position:absolute; z-index:40; pointer-events:none; background:var(--surface-2);
+    border:1px solid var(--accent-dim); color:var(--accent); border-radius:7px;
+    font-size:.72rem; padding:.2rem .5rem; white-space:nowrap; opacity:0;
+    transition:opacity .12s;
+  }
+  .droptag.on{opacity:1}
   .row{
     display:flex; align-items:flex-start; gap:.5rem; padding:.34rem .4rem;
     border-radius:8px; cursor:grab; background:var(--surface);
@@ -132,6 +149,11 @@
   .rowacts button{background:none; border:none; color:var(--faint); cursor:pointer;
                   font-size:.78rem; padding:0 .2rem; line-height:1}
   .rowacts button:hover{color:var(--accent)}
+  .rowacts button.x{font-size:.95rem}
+  .rowacts button.x:hover{color:var(--warn)}
+  .row.gone .tx{color:var(--faint); text-decoration:line-through}
+  .row:focus-visible{outline:2px solid var(--accent-dim); outline-offset:-2px}
+  .trash.hot{border-color:var(--warn); color:var(--warn)}
 
   /* ── group headings inside a card ─────── */
   .grp{display:flex; align-items:baseline; gap:.4rem; padding:.45rem .1rem .1rem;
@@ -258,6 +280,7 @@
   let cfg = LS.get("inbox.cfg", { url:"", token:"" });
 
   let data = null;           // the last /board payload
+  let dirty = false;         // moved since the last load — ↻ to resync
   let fetchedAt = 0;         // when, for the staleness guard
   let ctxCache = {};         // weather by date — it does not move in minutes
   const STALE_MS = 90000;
@@ -320,9 +343,19 @@
     const r = el("div","row"+(item.checked?" done":"")+(opts.plain?" plain":""));
     r.dataset.text = item.raw || item.text;
     r.dataset.addr = JSON.stringify(addr);
+    r.dataset.min = String(item.hint || 20);
     if(item.project) r.dataset.project = item.project;
     const cb = el("span","cb"); cb.innerHTML = CHECK;
-    if(opts.tickable) cb.addEventListener("click", e=>{ e.stopPropagation(); tick(r, item, addr); });
+    // Wired on every row, not just the ones that start in the day: a row
+    // dragged into today is not re-rendered any more, so its handler has
+    // to read the address it has NOW rather than the one it was born with.
+    cb.addEventListener("click", e=>{
+      e.stopPropagation();
+      let a = addr;
+      try{ a = JSON.parse(r.dataset.addr); }catch(err){}
+      if(a.pane !== "day"){ toast("ticking works once it is on a day"); return; }
+      tick(r, item, a);
+    });
     const tx = el("span","tx", item.text);
     if(item.hint) tx.append(el("span","badge", "~"+fmtMin(item.hint)));
     if(item.project){
@@ -334,10 +367,30 @@
     const acts = el("div","rowacts");
     const ed = el("button",null,"✎"); ed.title="Edit"; ed.addEventListener("click", ()=>edit(r, tx, item, addr));
     const sc = el("button",null,"◷"); sc.title="Schedule for a date";
-    sc.addEventListener("click", ()=>pickDate(t=>move(r.dataset.text, addr, {pane:"future", date:t},
-                                                      r.dataset.project)));
+    sc.addEventListener("click", ()=>pickDate(t=>{
+      const a = JSON.parse(r.dataset.addr);
+      move(r.dataset.text, a, {pane:"future", date:t}, r.dataset.project,
+           null, null, r).then(ok=>{ if(ok){ r.remove(); retotal(); } });
+    }));
     acts.append(ed, sc);
+    // A completed line in the month file is the record, not a worklist
+    // item — there is nothing to drop, so no × on it.
+    if(!item.checked && addr.pane!=="dropped"){
+      const rm = el("button","x","×"); rm.title="Drop (kept in Dropped.md)";
+      rm.addEventListener("click", ()=>drop(r.dataset.text,
+        JSON.parse(r.dataset.addr), r.dataset.project, r));
+      acts.append(rm);
+    }
     r.append(cb, tx, acts);
+    // Backspace drops whatever row the pointer is over, so a pass through
+    // the inbox does not mean aiming at a small × twenty times.
+    r.tabIndex = 0;
+    r.addEventListener("keydown", e=>{
+      if(e.key!=="Backspace" && e.key!=="Delete") return;
+      if(item.checked || addr.pane==="dropped") return;
+      e.preventDefault();
+      drop(r.dataset.text, JSON.parse(r.dataset.addr), r.dataset.project, r);
+    });
     return r;
   }
 
@@ -437,8 +490,10 @@
       const bh = el("div","blk-head");
       bh.append(el("span",null,name.toLowerCase()));
       if(b.label) bh.append(el("span","span", b.label));
-      bh.append(el("span","cap", cap? Math.round(mins)+" / "+cap+" min"
-                                    : (mins?fmtMin(mins):"")));
+      const capEl = el("span","cap", cap? Math.round(mins)+" / "+cap+" min"
+                                        : (mins?fmtMin(mins):""));
+      capEl.id = "cap-"+name;
+      bh.append(capEl);
       wrap.append(bh);
       for(const ev of evs) if(inBlock(ev,b)){
         const e = el("div","evt");
@@ -475,7 +530,13 @@
     }
     host.append(card);
 
-    const t = el("div","trash","drag here to send back to the inbox");
+    // The strip is NOT a Sortable list, and that is the whole point. It is
+    // an always-empty, full-width target, and Sortable's empty-list
+    // detection would let it claim drops aimed at small lanes on the other
+    // side of the screen — which is how a line dropped on a future date
+    // ended up in the graveyard. It is hit-tested against the pointer at
+    // release instead, so it can only catch what is actually over it.
+    const t = el("div","trash","drag here to drop · kept in Dropped.md");
     t.id = "trash";
     host.append(t);
   }
@@ -520,9 +581,14 @@
       const g = group(fmtD(d.date)+(d.overdue?" · overdue":""), "date"+(d.overdue?" overdue":""),
                       d.tasks.length, key);
       fcard.append(g);
-      if(collapsed.has(key)) continue;
+      // The lane is rendered even when the group is collapsed, just empty.
+      // Skipping it left a heading with no drop target under it, so a drop
+      // aimed at a collapsed date fell through to whatever lane was
+      // nearest — usually the inbox card below. A heading you can see is a
+      // heading you can drop on.
       const l = lane({pane:"future", date:d.date}, {mini:true});
-      for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
+      if(!collapsed.has(key))
+        for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
       fcard.append(l);
     }
     host.append(fcard);
@@ -557,12 +623,42 @@
       const g = group(c.category, null, c.items.length, key);
       g.querySelector(".chev").textContent = isOpen? "▾" : "▸";
       acard.append(g);
-      if(!isOpen) continue;
       const l = lane({pane:"aar", category:c.category}, {mini:true});
-      for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
+      if(isOpen)
+        for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
       acard.append(l);
     }
     host.append(acard);
+
+    // The graveyard. A drag source like any other pane, so restoring is
+    // just dragging a line back out — no separate restore path to get
+    // wrong. Collapsed by default: it is a record, not a worklist.
+    const gone = (data.dropped&&data.dropped.days)||[];
+    const dcard = el("div","card");
+    const dh = el("div","card-head");
+    dh.append(el("span",null,"dropped"));
+    dh.append(el("span","n", String(gone.reduce((s,d)=>s+d.items.length,0))));
+    dcard.append(dh);
+    if(!gone.length){
+      dcard.append(el("div","empty","nothing dropped this week"));
+    }
+    for(const d of gone){
+      const key = "d:"+d.date;
+      const g = group(fmtD(d.date), "date", d.items.length, key);
+      g.querySelector(".chev").textContent = collapsed.has(key)? "▾" : "▸";
+      dcard.append(g);
+      const l = lane({pane:"dropped", date:d.date}, {mini:true});
+      if(collapsed.has(key)){                    // default closed
+        for(const it of d.items){
+          const r = row(it, {pane:"dropped", date:d.date}, {plain:true});
+          r.classList.add("gone");
+          if(it.origin) r.querySelector(".tx").append(el("span","badge route", it.origin));
+          l.append(r);
+        }
+      }
+      dcard.append(l);
+    }
+    host.append(dcard);
   }
 
   function projectCard(title, pane, d){
@@ -575,10 +671,11 @@
       const key = pane+":"+p.body;
       const g = group(p.display, null, p.tasks.length, key);
       card.append(g);
-      if(collapsed.has(key)) continue;
       const l = lane({pane:pane, project:p.body}, {mini:true});
-      for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
-      if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+      if(!collapsed.has(key)){
+        for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
+        if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+      }
       card.append(l);
     }
     if(d.tasks && d.tasks.length!==undefined){
@@ -641,25 +738,104 @@
     document.querySelectorAll(".lane").forEach(l=>{
       Sortable.create(l, {
         group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
-        emptyInsertThreshold:14, filter:".empty,.adder",
-        onEnd: onDrop
+        // 14px was too greedy with lanes stacked this close: a lane could
+        // claim a pointer that was visibly over its neighbour. 5 is
+        // Sortable's own default and matches what the eye expects.
+        emptyInsertThreshold:5, filter:".empty,.adder",
+        onStart: ()=>{
+          document.body.classList.add("dragging");
+          PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
+        },
+        // No return value. Returning `true` here approves whatever
+        // candidate target Sortable is considering — including one the
+        // pointer is nowhere near — which is how a drop aimed at a future
+        // date ended up in the graveyard. Undefined leaves the decision
+        // where it belongs, with Sortable's own hit testing.
+        onMove: e=>{ markTarget(e.to); },
+        onEnd: e=>{
+          document.body.classList.remove("dragging");
+          PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
+          const onTrash = overTrash();
+          markTarget(null);
+          if(onTrash){
+            // Released over the strip: the row goes to the graveyard
+            // wherever Sortable happened to park it.
+            drop(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
+                 e.item.dataset.project || null, e.item);
+            return;
+          }
+          onDrop(e);
+        }
       });
-    });
-    const t = $("trash");
-    if(t) Sortable.create(t, {
-      group:{name:"vault", pull:false, put:true}, animation:140,
-      onAdd: e=>{
-        const from = JSON.parse(e.from.dataset.addr);
-        const text = e.item.dataset.text;
-        e.item.remove();
-        remove(text, from);
-      }
     });
   }
 
+  // The pointer is tracked through the drag so the strip can be hit-tested
+  // at release. Sortable does not report it, and the strip is deliberately
+  // not one of its lists.
+  // Several event names on purpose: once a drag is live, pointermove
+  // alone stops arriving here, and touchmove carries its coordinates on
+  // the first touch rather than on the event.
+  const PTR_EVENTS = ["pointermove", "mousemove", "dragover", "touchmove"];
+  let ptr = {x:-1, y:-1};
+  function trackPointer(e){
+    const s = (e.touches && e.touches[0]) || e;
+    if(s.clientX == null) return;
+    ptr = {x:s.clientX, y:s.clientY};
+    markTarget(null, true);
+  }
+  function overTrash(){
+    const t = $("trash");
+    if(!t || ptr.x < 0) return false;
+    const b = t.getBoundingClientRect();
+    return ptr.x >= b.left && ptr.x <= b.right && ptr.y >= b.top && ptr.y <= b.bottom;
+  }
+
+  // Highlights the lane a drop would land in, and floats its name beside
+  // the pointer. Sortable decides the target itself, so reading it back
+  // from `onMove` is the only honest way to show where the line is going.
+  let tagEl = null;
+  function markTarget(l, keep){
+    const t = $("trash");
+    if(t) t.classList.toggle("over", overTrash());
+    if(keep) return;               // pointer tick: only refresh the strip
+    document.querySelectorAll(".lane.over").forEach(x=>x.classList.remove("over"));
+    if(!tagEl){
+      tagEl = el("div","droptag");
+      document.body.append(tagEl);
+    }
+    if(!l){ tagEl.classList.remove("on"); return; }
+    l.classList.add("over");
+    let a = {};
+    try{ a = JSON.parse(l.dataset.addr||"{}"); }catch(err){}
+    tagEl.textContent = laneName(a);
+    const b = l.getBoundingClientRect();
+    tagEl.style.left = Math.round(b.left + 8) + "px";
+    tagEl.style.top = Math.round(b.top + window.scrollY - 22) + "px";
+    tagEl.classList.add("on");
+  }
+  function laneName(a){
+    if(a.pane==="day") return "today" + (a.block? " · "+a.block.toLowerCase() : "");
+    if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
+    if(a.pane==="inbox") return "inbox";
+    if(a.pane==="aar") return "append and review · " + (a.category||"");
+    if(a.pane==="dropped") return "dropped";
+    if(a.project) return a.project.replace(/[\[\]]/g,"");
+    if(a.pane) return a.pane;
+    return "";
+  }
+
   function onDrop(e){
+    // The destination is read from where the row ACTUALLY ended up, not
+    // from Sortable's `e.to`. Those two disagree: with several empty lanes
+    // in play, `e.to` can name a list the row never landed in, and the
+    // request then writes somewhere the screen never showed — a drop aimed
+    // at a future date arriving in the graveyard. The DOM is the thing the
+    // user can see, so the DOM decides.
+    const host = e.item.parentElement || e.to;
     const from = JSON.parse(e.from.dataset.addr||"{}");
-    const to   = JSON.parse(e.to.dataset.addr||"{}");
+    const to   = JSON.parse((host && host.dataset.addr) || "{}");
+    if(!to.pane) return;
     const text = e.item.dataset.text;
     const project = e.item.dataset.project || null;
     const samePane = e.from === e.to;
@@ -667,11 +843,11 @@
     // position matters only where order carries meaning: the
     // append-and-review note (top = kept in view) and a project's next
     // action (first open subtask is what /daily surfaces).
-    move(text, from, to, project, e.newIndex);
+    move(text, from, to, project, e.newIndex, null, e.item);
   }
 
   // ── mutations ──────────────────────────
-  async function move(text, from, to, project, position, newText){
+  async function move(text, from, to, project, position, newText, el2){
     if(busy){ toast("one at a time — still saving"); return refresh(); }
     if(!cfg.url){ openSheet(); return; }
     busy = true; setConn(null, "saving…");
@@ -689,25 +865,80 @@
           toastBad("saved to the destination, but the original is still in place");
         } else throw new Error(j.error||("HTTP "+r.status));
       } else {
+        // The drag already put the row where you dropped it, and the
+        // server agreed — so nothing is reloaded. Re-fetching after every
+        // move rebuilt the whole board, threw away scroll position and
+        // the groups you had open, and moved the lanes out from under
+        // your next drag. Refresh is ↻, or changing day, and nothing else.
+        // A dropped line leaves the screen wherever the drop came from —
+        // the × button, Backspace, or the strip. Nothing reloads, so the
+        // row has to go by itself.
+        if(el2 && to.pane==="dropped") el2.remove();
+        else if(el2) applyMoved(el2, to, j.project);
+        retotal();
+        markDirty();
         offerUndo(text, from, to, j.project);
+        setConn("online", "edited · ↻");
+        return true;
       }
       setConn("online");
+      return false;
     }catch(err){
       toastBad("couldn't move — "+err.message);
       setConn("offline");
+      await refresh();               // the view and the vault disagree now
+      return false;
     }finally{
       busy = false;
-      await refresh();
     }
   }
 
-  // There is no delete endpoint, and that is deliberate: a drag that ends
-  // badly should never destroy a line. Dropping on the trash sends it back
-  // to the inbox, where you can see it and decide. Emptying the inbox is a
-  // vault job, not something a stray drop can do.
-  async function remove(text, from){
-    if(from.pane==="inbox"){ toast("already in the inbox"); return refresh(); }
-    await move(text, from, {pane:"inbox"});
+  /** After a confirmed move, the row lives somewhere new — so its address
+   *  has to follow it, or the NEXT drag would send the wrong `from`. */
+  function applyMoved(node, to, project){
+    node.dataset.addr = JSON.stringify(to);
+    if(project) node.dataset.project = project;
+    else delete node.dataset.project;
+    const tx = node.querySelector(".tx");
+    if(tx){
+      const old = tx.querySelector(".badge.proj");
+      if(old) old.remove();
+      if(project) tx.append(el("span","badge proj", project.replace(/[\[\]]/g,"")));
+    }
+    node.classList.toggle("gone", to.pane==="dropped");
+  }
+
+  /** Recompute each block's planned minutes from the rows actually in it.
+   *  Cheap, local, and the only number on screen a move can change. */
+  function retotal(){
+    for(const b of (data.blocks||[])){
+      const lane = document.querySelector('.lane[data-addr*=\'"block":"'+b.name+'"\']');
+      const cap = document.getElementById("cap-"+b.name);
+      if(!lane || !cap) continue;
+      let mins = 0;
+      lane.querySelectorAll(".row").forEach(r=>{
+        if(r.classList.contains("done")) return;
+        mins += parseInt(r.dataset.min||"20", 10);
+      });
+      cap.textContent = b.capacity? Math.round(mins)+" / "+b.capacity+" min"
+                                  : (mins? fmtMin(mins) : "");
+      cap.style.color = (b.capacity && mins>b.capacity)? "var(--warn)" : "";
+    }
+  }
+
+  function markDirty(){
+    dirty = true;
+    setConn("online", "edited · ↻");
+  }
+
+  // Dropping is a move to the graveyard, not a delete: the line leaves its
+  // note and is logged in Dropped.md under today's date with where it came
+  // from. So there is no confirm dialog — an undo you can actually use
+  // beats a modal you learn to click through, and the line is recoverable
+  // from the note either way.
+  async function drop(text, from, project, node){
+    if(from.pane==="dropped") return;
+    await move(text, from, {pane:"dropped"}, project, null, null, node);
   }
 
   // /check returns the same shape /board's `day` has, minus `sections`.
@@ -726,13 +957,15 @@
         busy=false; r.classList.remove("pending"); return refresh();
       }
       if(!res.ok) throw new Error("HTTP "+res.status);
-      // /check hands back the whole day, so a tick costs ONE request. The
-      // source panes cannot have changed — a tick only touches the month
-      // file — so there is nothing to reload them for.
+      // /check hands back the whole day, so a tick costs ONE request — and
+      // the row is already struck through, so there is nothing to re-render
+      // either. Only the block's minute count changes.
       data.day = Object.assign(res_day(await res.json()), {sections:data.day.sections});
+      item.checked = want;
       setConn("online");
       busy=false; r.classList.remove("pending");
-      return render();
+      retotal();
+      return;
     }catch(e){
       r.classList.toggle("done", item.checked);
       toastBad("couldn't update");
@@ -786,8 +1019,11 @@
     b.addEventListener("click", async ()=>{
       t.classList.remove("show");
       // undo is the same call with the ends swapped — a real inverse,
-      // because a move is symmetric by construction
+      // because a move is symmetric by construction. This one DOES reload:
+      // the row is sitting where you dropped it and has to go back, and an
+      // undo is deliberate enough to be worth the round trip.
       await move(text, to, from, project);
+      await refresh();
     });
     t.append(b);
     clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 5000);
@@ -797,6 +1033,7 @@
     if(to.pane==="future") return "scheduled for "+fmtD(to.date);
     if(to.pane==="inbox") return "back to the inbox";
     if(to.pane==="aar") return "filed under "+to.category;
+    if(to.pane==="dropped") return "dropped · kept in Dropped.md";
     if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
     return "moved";
   }
@@ -858,7 +1095,7 @@
                 : Promise.resolve(cached.data)
       ]);
       if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
-      data = b; data.context = c; fetchedAt = Date.now();
+      data = b; data.context = c; fetchedAt = Date.now(); dirty = false;
       renderCtx(c);
       setConn("online");
       render();
@@ -901,13 +1138,15 @@
     if(e.key==="r"){ refresh(); }
     if(e.key==="Escape"){ closeSheets(); }
   });
-  // Returning to the tab refreshes only if the board is actually stale.
-  // Without the guard every alt-tab cost a full load — six GitHub reads and
-  // a calendar call — which is a lot of Cloud Run for a screen that has not
-  // changed. ↻ forces one whenever you want certainty.
+  // Reloading is manual. Coming back to the tab does not reload — it only
+  // says how old what you are looking at is, and ↻ is right there. The
+  // board is a planning surface you are moving things around on; having it
+  // rebuild itself under you is worse than it being a few minutes stale.
   document.addEventListener("visibilitychange",()=>{
-    if(document.hidden) return;
-    if(Date.now()-fetchedAt > STALE_MS) refresh();
+    if(document.hidden || !data) return;
+    const age = Math.round((Date.now()-fetchedAt)/60000);
+    if(dirty) setConn("online","edited · ↻");
+    else if(age >= 2) setConn("online", age+"m old · ↻");
   });
   window.addEventListener("online",()=>setConn("online"));
   window.addEventListener("offline",()=>setConn("offline"));
