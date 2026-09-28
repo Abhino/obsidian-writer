@@ -151,7 +151,7 @@
     margin-left:auto; display:inline-flex; align-items:center; gap:.4rem;
     background:var(--accent); color:#1a1206; border:none; border-radius:11px;
     font-family:var(--ui); font-weight:700; font-size:.86rem; letter-spacing:-.01em;
-    padding:.5rem .9rem; cursor:pointer; transition:transform .1s, opacity .2s;
+    padding:.5rem .82rem; cursor:pointer; transition:transform .1s, opacity .2s;
   }
   .send:active{transform:scale(.97)}
   .send:disabled{opacity:.4; cursor:default}
@@ -292,14 +292,58 @@
     background:none; border:none; color:var(--accent); font:inherit; font-weight:700;
     margin-left:.7rem; cursor:pointer; padding:0;
   }
-  /* compose target switch — inbox vs the standing errand list */
-  .targets{display:flex; gap:.3rem; margin-right:auto}
+  /* compose target switch — where the captured line lands */
+  .targets{display:flex; gap:.2rem; margin-right:auto; flex-wrap:wrap}
   .targets button{
     background:none; border:1px solid transparent; color:var(--faint);
     font:inherit; font-size:.68rem; font-family:var(--mono);
-    padding:.15rem .45rem; border-radius:6px; cursor:pointer;
+    padding:.15rem .35rem; border-radius:6px; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* Four destinations need the whole bar. ⌘↵ is a desktop affordance (there
+     is no ⌘ on a phone), and on a narrow screen the arrow alone reads as
+     "send" next to a text field — between them they buy the ~70px that keeps
+     all four chips on ONE row down to 320px, instead of wrapping and eating
+     a line of the capture screen. */
+  @media (max-width:520px){ .hint{display:none} }
+  @media (max-width:400px){
+    .send .lbl{display:none}
+    .send{padding:.5rem .72rem}
+    .bar{gap:.4rem; padding:.15rem .4rem .35rem .6rem}
+    .targets button{padding:.15rem .3rem; font-size:.64rem}
   }
   .targets button.on{color:var(--accent); border-color:var(--accent-dim)}
+  /* the project chip carries the chosen project, so it can outgrow the rest */
+  .targets button#tProject{max-width:38vw; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+
+  /* project picker */
+  .plist{max-height:46vh; overflow-y:auto; margin:.2rem -.25rem 0}
+  .prow{
+    display:flex; align-items:baseline; gap:.5rem; width:100%;
+    background:none; border:none; border-bottom:1px solid var(--line);
+    color:var(--ink); font:inherit; font-size:.88rem; text-align:left;
+    padding:.6rem .25rem; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .prow:last-child{border-bottom:none}
+  .prow.on{color:var(--accent)}
+  .prow .pname{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .prow .pn{font-family:var(--mono); font-size:.66rem; color:var(--faint); flex:none}
+  .pempty{color:var(--faint); font-size:.82rem; padding:.9rem .25rem; text-align:center}
+  /* next-action toggle — the difference between tomorrow and "someday" */
+  .ptop{
+    display:flex; align-items:flex-start; gap:.6rem; margin-top:1rem;
+    cursor:pointer; user-select:none; -webkit-user-select:none;
+  }
+  .ptop .cb{
+    flex:none; width:19px; height:19px; border:1.5px solid var(--faint);
+    border-radius:6px; margin-top:.1rem; display:flex; align-items:center;
+    justify-content:center; color:transparent; transition:background .15s, border-color .15s;
+  }
+  .ptop.on .cb{background:var(--accent); border-color:var(--accent); color:#1a1206}
+  .ptop .lbl{font-size:.8rem; line-height:1.35}
+  .ptop .sub{display:block; font-size:.7rem; color:var(--faint); margin-top:.1rem}
 
   /* ── shared view chrome: head, panels, footnote ── */
   /* capture earns its calm from soft cards and generous space; the list
@@ -415,10 +459,12 @@
         <div class="bar">
           <div class="targets" id="targets">
             <button data-t="inbox" class="on">inbox</button>
+            <button data-t="today">today</button>
             <button data-t="outside">outside</button>
+            <button data-t="project" id="tProject">project ▾</button>
           </div>
           <span class="hint" id="hint">⌘↵</span>
-          <button class="send" id="sendBtn" disabled>capture
+          <button class="send" id="sendBtn" aria-label="Capture" disabled><span class="lbl">capture</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -463,6 +509,23 @@
     </div>
   </div>
 
+  <div class="sheet" id="projSheet" role="dialog" aria-label="Pick a project">
+    <h2>File under a project</h2>
+    <div class="plist" id="projList"></div>
+    <div class="ptop" id="projTop" role="checkbox" aria-checked="false" tabindex="0">
+      <span class="cb">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      <span class="lbl">Make this the next action
+        <span class="sub">Files it above the project's other subtasks, so tomorrow's list picks it up.</span>
+      </span>
+    </div>
+    <div class="row">
+      <button class="test" id="projRefresh">Refresh</button>
+      <button class="save" id="projDone">Done</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -476,9 +539,13 @@
 
   let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"AutomatedNotes/00 Inbox.md",
                                   outside:"outside-list.md", vault:"" });
-  // which note the composer writes to. /capture already accepts a target,
-  // so an errand needs no new endpoint — only somewhere to aim.
+  // Where the composer writes. inbox/outside are notes addressed by PATH;
+  // today/project are addressed by KIND and the backend works out the file
+  // (today's month section, or the right bullet in Top Priorities).
   let composeTarget = LS.get("inbox.composeTarget", "inbox");
+  let project  = LS.get("inbox.project", null);   // {body, display}
+  let projTop  = LS.get("inbox.projTop", false);  // file as the NEXT action
+  let projects = LS.get("inbox.projects", []);    // cached /projects, for offline
   let queue = LS.get("inbox.queue", []);        // captures awaiting the backend
   let pins = LS.get("inbox.pins", []);          // [{id, label, file, mode}]
   let session = [];                              // what we show this session
@@ -495,13 +562,40 @@
       ? (cfg.outside||"outside-list.md")
       : (cfg.target||"AutomatedNotes/00 Inbox.md");
   }
+  // Everything /capture needs for the current destination, in one object.
+  // This is also EXACTLY what the offline queue stores, so a capture that
+  // waits out a tunnel can't forget where it was going.
+  function destBody(){
+    if(composeTarget==="today")   return { dest:"today" };
+    if(composeTarget==="project") return { dest:"project",
+                                           project:(project&&project.body)||"",
+                                           top:!!projTop };
+    return { dest:"inbox", target:targetPath() };
+  }
+  const PLACEHOLDER = {
+    inbox:"write a thought…", today:"a task for today…",
+    outside:"an errand for when you're out…",
+    project:"a next action for this project…"
+  };
+  function destLabel(){
+    if(composeTarget==="today")   return "today's list";
+    if(composeTarget==="project") return project? project.display : "pick a project";
+    return targetPath().split("/").pop();
+  }
+  // a project capture needs a project; nothing else can be half-configured
+  function canSend(){
+    return composeTarget!=="project" || !!(project && project.body);
+  }
+  function updateSend(){ sendBtn.disabled = !input.value.trim() || !canSend(); }
   function setComposeTarget(t){
     composeTarget = t; LS.set("inbox.composeTarget", t);
     document.querySelectorAll("#targets button")
       .forEach(b=>b.classList.toggle("on", b.dataset.t===t));
-    targetEl.textContent = targetPath().split("/").pop();
-    input.placeholder = t==="outside" ? "an errand for when you're out…"
-                                      : "write a thought…";
+    $("tProject").textContent =
+      (t==="project" && project) ? project.display : "project ▾";
+    targetEl.textContent = destLabel();
+    input.placeholder = PLACEHOLDER[t] || PLACEHOLDER.inbox;
+    updateSend();
   }
 
   function encPath(p){
@@ -592,31 +686,81 @@
   function capture(){
     let text=input.value.trim();
     if(!text) return;
-    const item={ id:Date.now()+""+Math.random().toString(36).slice(2,6), text,
-                 ts:Date.now(), status:"saving", target:targetPath() };
+    if(!canSend()){ openProjSheet(); return; }   // project target, no project yet
+    const item=Object.assign(
+      { id:Date.now()+""+Math.random().toString(36).slice(2,6), text,
+        ts:Date.now(), status:"saving" }, destBody());
     session.push(item);
-    input.value=""; autosize(); sendBtn.disabled=true; render();
+    input.value=""; autosize(); updateSend(); render();
     send(item);
+  }
+
+  // one body builder for both the live send and the queue replay, so the two
+  // paths can never disagree about what a capture meant
+  function postBody(item){
+    const b={ text:item.text, ts:new Date(item.ts).toISOString() };
+    if(item.dest==="today"){
+      b.dest="today";
+    }else if(item.dest==="project"){
+      b.dest="project"; b.project=item.project; b.top=!!item.top;
+    }else{
+      b.dest="inbox"; b.target=item.target||cfg.target;
+    }
+    return JSON.stringify(b);
+  }
+
+  function postCapture(item){
+    return fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json",
+                "Authorization":"Bearer "+(cfg.token||"") },
+      body:postBody(item)
+    });
   }
 
   async function send(item){
     if(!cfg.url){ markQueued(item); openSheet(); return; }
     try{
-      const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
-        body:JSON.stringify({ text:item.text, ts:new Date(item.ts).toISOString(), target:item.target||cfg.target })
-      });
+      const res=await postCapture(item);
       if(!res.ok) throw new Error("HTTP "+res.status);
       item.status="filed"; lastOk=Date.now(); setConn("online"); render();
+      absorbResult(item, await res.json().catch(()=>null));
     }catch(e){
       markQueued(item);
     }
   }
 
+  // A `today` capture answers with the refreshed /today payload (or says it
+  // was parked in Future Days because /daily hasn't built the day yet), so
+  // the Today tab stays truthful without a second round trip.
+  function absorbResult(item, data){
+    if(!data) return;
+    if(item.dest==="today"){
+      if(data.parked){ showToast("day not built yet — queued for the 8am list"); return; }
+      if(data.ok && ("tasks" in data || data.exists===false)){
+        todayData=data; todayFetchedAt=Date.now();
+        if(curView==="today") renderToday();
+      }
+      showToast(data.already? "already on today's list" : "added to today");
+    }else if(item.dest==="project"){
+      const name=(data.display||(project&&project.display)||"project");
+      // a next action lives under exactly one project, so a line already
+      // queued anywhere in Top Projects is left where it is
+      showToast(data.already ? "already queued under a project"
+                : item.top ? "next action for "+name
+                : "queued under "+name);
+    }
+  }
+
   function markQueued(item){
     item.status="queued";
-    if(!queue.find(q=>q.id===item.id)) queue.push({id:item.id, text:item.text, ts:item.ts});
+    if(!queue.find(q=>q.id===item.id)){
+      // Store the WHOLE descriptor. The queue used to keep only
+      // {id,text,ts}, so a replay fell back to cfg.target and an errand or
+      // project task captured offline silently landed in the inbox.
+      queue.push({ id:item.id, text:item.text, ts:item.ts, dest:item.dest,
+                   target:item.target, project:item.project, top:item.top });
+    }
     LS.set("inbox.queue", queue);
     setConn(navigator.onLine? "online":"offline");
     render();
@@ -626,36 +770,36 @@
   async function flush(force){
     if(!cfg.url || (!navigator.onLine && !force) || !queue.length) return;
     const pending=[...queue];
+    let touchedToday=false;
     for(const q of pending){
       try{
-        const res=await fetch(cfg.url.replace(/\/+$/,"")+"/capture",{
-          method:"POST",
-          headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") },
-          body:JSON.stringify({ text:q.text, ts:new Date(q.ts).toISOString(), target:q.target||cfg.target })
-        });
+        const res=await postCapture(q);
         if(!res.ok) throw new Error("HTTP "+res.status);
         queue=queue.filter(x=>x.id!==q.id);
         LS.set("inbox.queue", queue);
         const s=session.find(x=>x.id===q.id); if(s){ s.status="filed"; }
         lastOk=Date.now();
+        if(q.dest==="today") touchedToday=true;
       }catch(e){ break; } // stop on first failure, keep order
     }
+    if(touchedToday){ todayData=null; todayFetchedAt=0; }  // day changed underneath
     setConn(navigator.onLine? "online":"offline");
     render();
   }
 
   // ── composer behaviour ─────────────────
   function autosize(){ input.style.height="auto"; input.style.height=Math.min(input.scrollHeight, window.innerHeight*0.42)+"px"; }
-  input.addEventListener("input",()=>{ autosize(); sendBtn.disabled=!input.value.trim(); });
+  input.addEventListener("input",()=>{ autosize(); updateSend(); });
   input.addEventListener("keydown",e=>{
     if(e.key==="Enter" && (e.metaKey||e.ctrlKey)){ e.preventDefault(); capture(); }
   });
   sendBtn.addEventListener("click",capture);
 
   // ── settings sheet ─────────────────────
-  const scrim=$("scrim"), sheet=$("sheet"), pinSheet=$("pinSheet");
+  const scrim=$("scrim"), sheet=$("sheet"), pinSheet=$("pinSheet"),
+        projSheet=$("projSheet");
   function openSheet(){
-    pinSheet.classList.remove("open");
+    pinSheet.classList.remove("open"); projSheet.classList.remove("open");
     $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
     $("cfgTarget").value=cfg.target||"AutomatedNotes/00 Inbox.md";
     $("cfgOutside").value=cfg.outside||"outside-list.md";
@@ -664,7 +808,8 @@
     scrim.classList.add("open"); sheet.classList.add("open");
   }
   function closeSheet(){
-    scrim.classList.remove("open"); sheet.classList.remove("open"); pinSheet.classList.remove("open");
+    scrim.classList.remove("open"); sheet.classList.remove("open");
+    pinSheet.classList.remove("open"); projSheet.classList.remove("open");
     if(pinEditMode){ pinEditMode=false; renderPins(); }
   }
   $("gearBtn").addEventListener("click",openSheet);
@@ -678,7 +823,8 @@
       outside:$("cfgOutside").value.trim()||"outside-list.md",
       vault:$("cfgVault").value.trim()
     };
-    LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins(); flush(true);
+    LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins();
+    setComposeTarget(composeTarget); loadProjects(); flush(true);
   });
   $("testBtn").addEventListener("click",async()=>{
     const url=$("cfgUrl").value.trim(); const out=$("testResult");
@@ -721,6 +867,80 @@
     if(editingPin){ pins=pins.filter(p=>p!==editingPin); LS.set("inbox.pins", pins); }
     pinEditMode=false; closeSheet(); renderPins();
   });
+
+  // ── project picker ─────────────────────
+  // The list comes from /projects (the `Top Projects:` bullets) and is cached
+  // in localStorage, so the sheet opens instantly and still works on a train.
+  // `body` keeps its [[wikilinks]] — that's the key the backend matches on —
+  // while `display` is what goes on the chip.
+  function renderProjects(){
+    const host=$("projList");
+    host.innerHTML="";
+    if(!projects.length){
+      const e=el("div","pempty");
+      e.textContent = cfg.url ? "No projects found in Top Priorities."
+                              : "Set a backend URL first.";
+      host.append(e);
+      return;
+    }
+    for(const p of projects){
+      const row=el("button","prow"+(project && project.body===p.body ? " on" : ""));
+      const n=el("span","pname"); n.textContent=p.display;
+      const c=el("span","pn");
+      c.textContent = p.open ? p.open+" open" : "no next action";
+      row.append(n,c);
+      row.addEventListener("click",()=>{
+        project={ body:p.body, display:p.display };
+        LS.set("inbox.project", project);
+        setComposeTarget("project");
+        renderProjects();
+      });
+      host.append(row);
+    }
+  }
+
+  async function loadProjects(){
+    if(!cfg.url) return;
+    try{
+      const r=await api("/projects");
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const d=await r.json();
+      projects=d.projects||[];
+      LS.set("inbox.projects", projects);
+      // a project renamed in the vault would otherwise leave the chip
+      // pointing at a bullet that no longer exists
+      if(project && !projects.find(p=>p.body===project.body)){
+        const m=projects.find(p=>p.display===project.display);
+        if(m){ project={body:m.body, display:m.display}; LS.set("inbox.project", project); }
+      }
+      renderProjects();
+      if(composeTarget==="project") setComposeTarget("project");
+    }catch(e){
+      renderProjects();
+    }
+  }
+
+  function setProjTop(on){
+    projTop=!!on; LS.set("inbox.projTop", projTop);
+    const t=$("projTop");
+    t.classList.toggle("on", projTop);
+    t.setAttribute("aria-checked", projTop ? "true" : "false");
+  }
+
+  function openProjSheet(){
+    sheet.classList.remove("open"); pinSheet.classList.remove("open");
+    setProjTop(projTop);
+    renderProjects();
+    scrim.classList.add("open"); projSheet.classList.add("open");
+    loadProjects();
+  }
+
+  $("projTop").addEventListener("click",()=>setProjTop(!projTop));
+  $("projTop").addEventListener("keydown",e=>{
+    if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setProjTop(!projTop); }
+  });
+  $("projRefresh").addEventListener("click",loadProjects);
+  $("projDone").addEventListener("click",()=>{ closeSheet(); input.focus(); });
 
   // ── backend api helper ─────────────────
   function api(path, opts){
@@ -1088,8 +1308,19 @@
   $("todayRefresh").addEventListener("click",fetchToday);
   $("outsideRefresh").addEventListener("click",
     ()=>openList(listPath||cfg.outside||"outside-list.md", listLabel));
+  // tapping `project` picks one; tapping it again (or with none chosen)
+  // opens the picker, which is also how you switch projects
   document.querySelectorAll("#targets button").forEach(b=>
-    b.addEventListener("click",()=>setComposeTarget(b.dataset.t)));
+    b.addEventListener("click",()=>{
+      const t=b.dataset.t;
+      if(t==="project"){
+        const wasOn = composeTarget==="project";
+        setComposeTarget("project");
+        if(wasOn || !project) openProjSheet();
+        return;
+      }
+      setComposeTarget(t);
+    }));
 
   // returning to the app with Today open → refresh if stale (e.g. after the
   // morning digest's "Today view" button, or checking boxes in Obsidian)
@@ -1111,6 +1342,9 @@
   for(const q of queue){ session.push({id:q.id, text:q.text, ts:q.ts, status:"queued"}); }
   setConn(navigator.onLine? "online":"offline");
   render(); renderPins(); autosize(); setComposeTarget(composeTarget);
+  // only when the composer is already aimed at a project — keeps boot to the
+  // one request the capture screen actually needs
+  if(cfg.url && composeTarget==="project") loadProjects();
   // #today deep link — /daily's 8am push lands here
   if(location.hash==="#today" && cfg.url) switchView("today");
   if(location.hash==="#outside" && cfg.url) switchView("outside");
