@@ -216,6 +216,24 @@
   .warnbar{background:var(--surface-2); border:1px solid var(--warn); border-radius:10px;
            color:var(--warn); font-size:.76rem; padding:.45rem .7rem; margin-bottom:.2rem}
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+
+  /* tags, collapsing blocks, focus */
+  .tagbar{display:flex; gap:.3rem; align-items:center; flex-wrap:wrap}
+  .chip{font:inherit; font-size:.72rem; padding:.12rem .55rem; border:1px solid var(--line);
+    border-radius:99px; background:none; color:var(--faint); cursor:pointer}
+  .chip.on{background:var(--accent); color:#1a1206; border-color:var(--accent)}
+  .focusn{font-family:var(--mono); font-size:.72rem; color:var(--accent); margin-left:.3rem}
+  .badge.tg{border-radius:6px; margin-left:.4rem; color:var(--tc,var(--faint)); border-color:transparent;
+    background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
+  .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
+  .t-call{--tc:#b7a0dc} .t-habit{--tc:var(--accent)}
+  .row.dim{opacity:.28}
+  .row.focus{box-shadow:inset 3px 0 0 var(--accent)}
+  .rowacts .star{color:var(--faint)} .rowacts .star.on{color:var(--accent)}
+  .blk-head{cursor:pointer; user-select:none}
+  .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
+  .blk.collapsed .blk-head .chev{transform:rotate(-90deg)}
+  .blk.collapsed .lane, .blk.collapsed .adder, .blk.collapsed .evt{display:none}
 </style>
 </head>
 <body>
@@ -228,6 +246,7 @@
       <button id="todayBtn">today</button>
     </div>
     <div class="ctx" id="ctx"></div>
+    <div class="tagbar" id="tagbar"></div>
     <div class="hdr-right">
       <button class="ghost" id="routeBtn" title="Shade each task by where /defer would send it tomorrow">defer view</button>
       <button class="ghost" id="buildBtn" hidden>build the day</button>
@@ -289,6 +308,16 @@
   let routeView = false;     // shade by where /defer would send each task
   let busy = false;          // one write in flight at a time
   const collapsed = new Set(LS.get("board.collapsed", []));
+  // Tags: plain inline #tokens in a fixed vocabulary; they stay in the task
+  // text (the backend strips them only for identity), so a rename keeps them.
+  const TAGS = ["urgent","home","phone","call","habit"];
+  const TAG_RE = /(^|\s)#(urgent|home|phone|call|habit|focus)\b/gi;
+  const tagsOf = s => { const o=[]; let m; TAG_RE.lastIndex=0;
+    while((m=TAG_RE.exec(s||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); }
+    return o; };
+  const stripTags = s => (s||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
+  let tagFilter = "";
+  const blkState = {};       // "date|block" → true = open; session only
 
   // ── api ────────────────────────────────
   function api(path, opts){
@@ -356,7 +385,11 @@
       if(a.pane !== "day"){ toast("ticking works once it is on a day"); return; }
       tick(r, item, a);
     });
-    const tx = el("span","tx", item.text);
+    const tg = tagsOf(item.text);
+    const tx = el("span","tx", stripTags(item.text));
+    r.dataset.tags = tg.join(" ");
+    if(tg.includes("focus")) r.classList.add("focus");
+    tg.forEach(t=>{ if(t!=="focus") tx.append(el("span","badge tg t-"+t, "#"+t)); });
     if(item.hint) tx.append(el("span","badge", "~"+fmtMin(item.hint)));
     if(item.project){
       const p = el("span","badge proj", item.project.replace(/[\[\]]/g,""));
@@ -373,6 +406,12 @@
            null, null, r).then(ok=>{ if(ok){ r.remove(); retotal(); } });
     }));
     acts.append(ed, sc);
+    if(opts.tickable && !item.checked){
+      const st = el("button","star"+(tg.includes("focus")?" on":""), tg.includes("focus")?"★":"☆");
+      st.title = "Focus 3 (resets tomorrow)";
+      st.addEventListener("click", ()=>focusToggle(r, st, item));
+      acts.prepend(st);
+    }
     // A completed line in the month file is the record, not a worklist
     // item — there is nothing to drop, so no × on it.
     if(!item.checked && addr.pane!=="dropped"){
@@ -425,6 +464,56 @@
     renderDay();
     renderSources();
     wire();
+    tagbar();
+  }
+
+  // ── tags: filter chips + Focus 3 counter ──
+  function tagbar(){
+    const host = $("tagbar"); if(!host) return;
+    const rows = [...document.querySelectorAll(".row:not(.done)")];
+    host.innerHTML = "";
+    const chip = (label, val, n, cls)=>{
+      const b = el("button","chip"+(tagFilter===val?" on":"")+(cls?" "+cls:""),
+                   label+(n!=null?" "+n:""));
+      b.addEventListener("click", ()=>{ tagFilter = tagFilter===val?"":val; tagbar(); });
+      host.append(b);
+    };
+    chip("all","",null);
+    TAGS.forEach(t=>chip("#"+t, t, rows.filter(r=>(r.dataset.tags||"").split(" ").includes(t)).length, "t-"+t));
+    const f = document.querySelectorAll("#colDay .row.focus:not(.done)").length;
+    host.append(el("span","focusn","★ "+f+" / 3"));
+    document.querySelectorAll(".row").forEach(r=>
+      r.classList.toggle("dim", !!tagFilter && !(r.dataset.tags||"").split(" ").includes(tagFilter)));
+  }
+
+  async function focusToggle(r, st, item){
+    const on = !r.classList.contains("focus");
+    try{
+      const res = await api("/focus",{method:"POST",
+        body:JSON.stringify({date:viewDate, text:item.text, focus:on})});
+      if(res.status===409){ toast("focus is full — unstar one first"); return; }
+      if(!res.ok){ toast("could not set focus"); return; }
+      r.classList.toggle("focus", on);
+      st.classList.toggle("on", on); st.textContent = on?"★":"☆";
+      // the vault line now carries/loses #focus; keep the row's tags in step
+      const ts = (r.dataset.tags||"").split(" ").filter(x=>x&&x!=="focus");
+      if(on) ts.push("focus"); r.dataset.tags = ts.join(" ");
+      markDirty(); tagbar();
+    }catch(e){ toast("could not set focus"); }
+  }
+
+  // Dragging onto a folded block opens it after a beat, so folded blocks
+  // stay valid drop targets.
+  let hoverT = null, hoverB = null;
+  function hoverOpen(e){
+    const t = e.touches && e.touches[0] ? e.touches[0] : e;
+    if(t.clientX==null) return;
+    const h = document.elementFromPoint(t.clientX, t.clientY);
+    const b = h && h.closest ? h.closest(".blk.collapsed") : null;
+    if(b!==hoverB){
+      clearTimeout(hoverT); hoverB = b;
+      if(b) hoverT = setTimeout(()=>b.classList.remove("collapsed"), 450);
+    }
   }
 
   function taskIndex(){
@@ -433,6 +522,7 @@
   }
   function norm(s){
     return (s||"").replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/,"")
+      .replace(/(^|\s)#(?:urgent|home|phone|call|habit|focus)\b/gi," ")
       .replace(/\s*\|\s*[^|]*$/,"").replace(/[\[\]]/g,"")
       .replace(/\s+/g," ").trim().toLowerCase();
   }
@@ -484,17 +574,25 @@
     for(const b of blocks){
       const name = b.name;
       const items = byBlock.get(name)||[];
-      const mins = items.reduce((s,f)=>s+(f.node.checked?0:(f.node.hint||20)),0);
-      const cap = b.capacity;
-      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&mins>cap?" over":""));
+      const open = items.filter(f=>!f.node.checked).length;
+      const cap = b.capacity;        // a soft task COUNT now, not minutes
+      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&open>cap?" over":""));
       const bh = el("div","blk-head");
-      bh.append(el("span",null,name.toLowerCase()));
+      bh.append(el("span","chev","▾"), el("span",null,name.toLowerCase()));
       if(b.label) bh.append(el("span","span", b.label));
-      const capEl = el("span","cap", cap? Math.round(mins)+" / "+cap+" min"
-                                        : (mins?fmtMin(mins):""));
+      const capEl = el("span","cap", open? open+" open" : (items.length?"done ✓":""));
+      if(cap) capEl.title = "soft cap "+cap+" (less events in this block)";
       capEl.id = "cap-"+name;
       bh.append(capEl);
       wrap.append(bh);
+      // Finished blocks fold away by default; a click overrides for the session.
+      const bk = viewDate+"|"+name;
+      const fold = bk in blkState ? !blkState[bk]
+                                  : (items.length>0 && open===0);
+      wrap.classList.toggle("collapsed", fold);
+      bh.addEventListener("click", ()=>{
+        blkState[bk] = wrap.classList.toggle("collapsed") ? false : true;
+      });
       for(const ev of evs) if(inBlock(ev,b)){
         const e = el("div","evt");
         e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
@@ -745,6 +843,7 @@
         onStart: ()=>{
           document.body.classList.add("dragging");
           PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
+          PTR_EVENTS.forEach(n=>document.addEventListener(n, hoverOpen, true));
         },
         // No return value. Returning `true` here approves whatever
         // candidate target Sortable is considering — including one the
@@ -755,6 +854,8 @@
         onEnd: e=>{
           document.body.classList.remove("dragging");
           PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
+          PTR_EVENTS.forEach(n=>document.removeEventListener(n, hoverOpen, true));
+          clearTimeout(hoverT); hoverB = null;
           const onTrash = overTrash();
           markTarget(null);
           if(onTrash){
@@ -908,22 +1009,21 @@
     node.classList.toggle("gone", to.pane==="dropped");
   }
 
-  /** Recompute each block's planned minutes from the rows actually in it.
+  /** Recompute each block's open count from the rows actually in it.
    *  Cheap, local, and the only number on screen a move can change. */
   function retotal(){
     for(const b of (data.blocks||[])){
       const lane = document.querySelector('.lane[data-addr*=\'"block":"'+b.name+'"\']');
       const cap = document.getElementById("cap-"+b.name);
       if(!lane || !cap) continue;
-      let mins = 0;
+      let open = 0, all = 0;
       lane.querySelectorAll(".row").forEach(r=>{
-        if(r.classList.contains("done")) return;
-        mins += parseInt(r.dataset.min||"20", 10);
+        all++; if(!r.classList.contains("done")) open++;
       });
-      cap.textContent = b.capacity? Math.round(mins)+" / "+b.capacity+" min"
-                                  : (mins? fmtMin(mins) : "");
-      cap.style.color = (b.capacity && mins>b.capacity)? "var(--warn)" : "";
+      cap.textContent = open? open+" open" : (all? "done ✓" : "");
+      cap.style.color = (b.capacity && open>b.capacity)? "var(--warn)" : "";
     }
+    tagbar();
   }
 
   function markDirty(){
@@ -978,6 +1078,7 @@
   function edit(r, tx, item, addr){
     const before = item.raw || item.text;
     tx.querySelectorAll(".badge").forEach(b=>b.remove());
+    tx.textContent = item.text;
     tx.setAttribute("contenteditable","true");
     tx.focus();
     const sel=getSelection(), rg=document.createRange();

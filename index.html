@@ -405,6 +405,30 @@
   @media (prefers-reduced-motion:reduce){
     *{animation:none !important; transition:none !important}
   }
+
+  /* tags, focus, collapsing panels */
+  .t-urgent{--tc:var(--warn,#d98a6a)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
+  .t-call{--tc:#b7a0dc} .t-habit{--tc:var(--accent)}
+  .tagp{display:inline-block; margin-left:.4rem; font-size:.66rem; padding:0 .35rem; border-radius:6px;
+    color:var(--tc); background:color-mix(in srgb,var(--tc) 14%,transparent)}
+  .task-row.dim{opacity:.28}
+  .task-row.focus{box-shadow:inset 3px 0 0 var(--accent)}
+  .task-row .star{margin-left:auto; background:none; border:0; color:var(--faint); font-size:1.15rem;
+    min-width:36px; min-height:36px; padding:0}
+  .task-row .star.on{color:var(--accent)}
+  .tchips{display:flex; gap:.35rem; overflow-x:auto; padding:.2rem 0 .5rem}
+  .tchip{flex:none; font:inherit; font-size:.76rem; padding:.3rem .7rem; min-height:34px;
+    border:1px solid var(--line); border-radius:99px; background:none; color:var(--faint)}
+  .tchip.on{background:var(--accent); color:#1a1206; border-color:var(--accent)}
+  .focuscard{border-color:var(--accent-dim,var(--accent))}
+  .panel-head{cursor:pointer; user-select:none}
+  .pchev{color:var(--faint); font-size:.7rem; margin-right:.4rem; display:inline-block; transition:transform .15s}
+  .panel.collapsed .pchev{transform:rotate(-90deg)}
+  .panel.collapsed > :not(.panel-head){display:none}
+  .tagrow{display:flex; gap:.35rem; overflow-x:auto; padding:.15rem 0 .35rem}
+  .tagbtn{flex:none; font:inherit; font-size:.76rem; padding:.3rem .65rem; min-height:34px; border-radius:99px;
+    border:1px solid var(--line); background:none; color:var(--tc,var(--faint))}
+  .tagbtn.on{background:color-mix(in srgb,var(--tc,#888) 22%,transparent); border-color:var(--tc,var(--line))}
 </style>
 </head>
 <body>
@@ -456,6 +480,7 @@
     <div class="composer">
       <div class="field">
         <textarea id="input" rows="1" placeholder="write a thought…" autocomplete="off" autocapitalize="sentences"></textarea>
+        <div class="tagrow" id="tagrow"></div>
         <div class="bar">
           <div class="targets" id="targets">
             <button data-t="inbox" class="on">inbox</button>
@@ -1033,15 +1058,45 @@
     return "~"+(h&&r? h+"h"+r+"m" : h? h+"h" : r+"m");
   }
 
+  // Tags are plain inline #tokens kept IN the task text; the backend sends
+  // `tags` and a tag-free `title` alongside `text` (which is what /check needs).
+  const TAGS=["urgent","home","phone","call","habit"];
+  const TAG_RE=/(^|\s)#(urgent|home|phone|call|habit|focus)\b/gi;
+  const tagsOf=n=>{ if(n.tags) return n.tags; const o=[]; let m; TAG_RE.lastIndex=0;
+    while((m=TAG_RE.exec(n.text||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); } return o; };
+  const titleOf=n=>n.title || (n.text||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
+  let todayTagFilter="";
+  const panelState={};                 // "date|block" → true = folded (session)
+  const flatTasks=ns=>(ns||[]).flatMap(n=>[...(n.box?[n]:[]),...flatTasks(n.children)]);
+  async function toggleFocus(n, want){
+    try{
+      const r=await api("/focus",{ method:"POST",
+        body:JSON.stringify({ date:todayData.date, text:n.text, focus:want }) });
+      if(r.status===409){ showToast("focus is full — unstar one first"); return; }
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      todayData=await r.json(); todayFetchedAt=Date.now(); renderToday();
+    }catch(e){ showToast("couldn't set focus — check connection"); }
+  }
   function taskRow(n, depth, onToggle){
     const row=el("div","task-row"+(n.box? (n.checked?" done":"") : " struct"));
+    const tg=tagsOf(n);
+    if(tg.includes("focus")) row.classList.add("focus");
+    if(todayTagFilter && !tg.includes(todayTagFilter)) row.classList.add("dim");
     row.style.paddingLeft=(depth*1.1)+"rem";
     const cb=el("span","cb");
     cb.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    const tx=el("span","tx"); tx.textContent=n.text;
+    const tx=el("span","tx"); tx.textContent=titleOf(n);
+    tg.forEach(t=>{ if(t!=="focus"){ const p=el("span","tagp t-"+t); p.textContent="#"+t; tx.append(p); } });
     if(n.hint){ const bd=el("span","badge"); bd.textContent=fmtHint(n.hint); tx.append(bd); }
     row.append(cb);
     row.append(tx);
+    if(n.box && !n.checked && onToggle===undefined){
+      const st=el("button","star"+(tg.includes("focus")?" on":""));
+      st.textContent=tg.includes("focus")?"★":"☆";
+      st.setAttribute("aria-label","Focus 3");
+      st.addEventListener("click",e=>{ e.stopPropagation(); toggleFocus(n, !tg.includes("focus")); });
+      row.append(st);
+    }
     if(n.box) row.addEventListener("click",()=>(onToggle||toggleTask)(row,n));
     return row;
   }
@@ -1074,15 +1129,14 @@
   function todayMetaLine(d){
     const bits=[fmtDate(d.date)];
     if(!d.exists){ bits.push("not built yet"); return bits.join(" · "); }
-    let open=0, done=0, mins=0;
+    let open=0, done=0;
     for(const n of d.tasks||[]){
       if(!n.box) continue;
       if(n.checked) done++;
-      else { open++; mins+=n.hint||0; }
+      else open++;
     }
     bits.push(plural(open,"task"));
     if(done) bits.push(done+" done");
-    if(mins) bits.push(fmtHint(mins).replace("~",""));
     return bits.join(" · ");
   }
 
@@ -1113,6 +1167,28 @@
       return;
     }
     renderContext();
+
+    // Focus 3 (resets daily: /defer strips #focus) and tag filter chips.
+    {
+      const all=flatTasks(d.tasks), foc=all.filter(n=>!n.checked && tagsOf(n).includes("focus"));
+      const chips=el("div","tchips");
+      ["",...TAGS].forEach(t=>{
+        const b=el("button","tchip"+(todayTagFilter===t?" on":"")+(t?" t-"+t:""));
+        b.textContent=t? "#"+t+" "+all.filter(n=>!n.checked&&tagsOf(n).includes(t)).length : "all";
+        b.addEventListener("click",()=>{ todayTagFilter=(todayTagFilter===t)?"":t; renderToday(); });
+        chips.append(b);
+      });
+      todayBody.append(chips);
+      const fp=el("div","panel focuscard");
+      const fh=el("div","panel-head");
+      const ft=el("span"); ft.textContent="★ focus 3"; fh.append(ft);
+      const fn=el("span","n"); fn.textContent=all.filter(n=>tagsOf(n).includes("focus")).length+" / 3"; fh.append(fn);
+      fp.append(fh);
+      if(foc.length) foc.forEach(n=>fp.append(taskRow(n,0)));
+      else { const e=el("div","tv-empty"); e.style.padding=".6rem .9rem"; e.style.fontSize=".78rem";
+             e.textContent="Tap ☆ on up to three tasks. Resets tomorrow."; fp.append(e); }
+      todayBody.append(fp);
+    }
 
     // group by the `| Block` hint the scheduler stamped on each task. That
     // replaces the old `#### Morning` subsections in the markdown — same
@@ -1171,7 +1247,12 @@
       n.textContent=oc? oc : "done";
       h.append(n);
       panel.append(h);
+      const ch=el("span","pchev"); ch.textContent="▾"; h.prepend(ch);
       walk(nodes,0,panel);
+      // finished blocks fold by default; a tap overrides for the session
+      const pk=d.date+"|"+name;
+      panel.classList.toggle("collapsed", pk in panelState ? panelState[pk] : (oc===0 && nodes.length>0));
+      h.addEventListener("click",()=>{ panelState[pk]=panel.classList.toggle("collapsed"); });
       todayBody.append(panel);
     };
     for(const [name,nodes] of groups){
@@ -1354,6 +1435,30 @@
   if("serviceWorker" in navigator){
     window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
   }
+})();
+</script>
+<script>
+// Capture tag toggles: tapping one adds/removes " #tag" in the note. The
+// backend reads tags from the text, so nothing else changes (and typing
+// #call or a leading ! works the same way).
+(function(){
+  const box=document.getElementById("tagrow"), ta=document.getElementById("input");
+  if(!box||!ta) return;
+  const has=t=>new RegExp("(^|\\s)#"+t+"\\b","i").test(ta.value);
+  const sync=()=>box.querySelectorAll("button").forEach(b=>b.classList.toggle("on",has(b.dataset.t)));
+  ["urgent","home","phone","call","habit"].forEach(t=>{
+    const b=document.createElement("button"); b.type="button"; b.dataset.t=t; b.textContent="#"+t;
+    b.className="tagbtn t-"+t;
+    b.addEventListener("click",()=>{
+      ta.value = has(t) ? ta.value.replace(new RegExp("\\s*#"+t+"\\b","ig"),"").trim()
+                        : (ta.value.trim()+" #"+t).trim();
+      ta.dispatchEvent(new Event("input",{bubbles:true})); sync(); ta.focus();
+    });
+    box.append(b);
+  });
+  ta.addEventListener("input",sync);
+  new MutationObserver(sync).observe(ta,{attributes:true});
+  ta.addEventListener("change",sync); sync();
 })();
 </script>
 </body>
