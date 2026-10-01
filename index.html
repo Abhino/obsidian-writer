@@ -508,8 +508,6 @@
     <input id="cfgTarget" placeholder="AutomatedNotes/00 Inbox.md" />
     <label for="cfgOutside">Outside list note</label>
     <input id="cfgOutside" placeholder="outside-list.md" />
-    <label for="cfgVault">Obsidian vault name</label>
-    <input id="cfgVault" placeholder="exact vault name, for Open-in-Obsidian" />
     <div class="test-result" id="testResult"></div>
     <div class="row">
       <button class="test" id="testBtn">Test connection</button>
@@ -517,17 +515,12 @@
     </div>
   </div>
 
-  <div class="sheet" id="pinSheet" role="dialog" aria-label="Pin a note">
-    <h2 id="pinSheetTitle">Pin a note</h2>
+  <div class="sheet" id="pinSheet" role="dialog" aria-label="Pin a list">
+    <h2 id="pinSheetTitle">Pin a list</h2>
     <label for="pinLabel">Button label</label>
     <input id="pinLabel" placeholder="e.g. Goals" />
-    <label for="pinFile">Note path from vault root</label>
+    <label for="pinFile">Checkbox note, path from vault root</label>
     <input id="pinFile" placeholder="e.g. Areas/Goals.md" />
-    <label for="pinMode">Opens as</label>
-    <select id="pinMode">
-      <option value="link">Obsidian link — needs the vault to have synced</option>
-      <option value="list">Live list — reads through the backend, tappable</option>
-    </select>
     <div class="row">
       <button class="test" id="pinDeleteBtn" style="display:none; color:var(--warn)">Remove</button>
       <button class="save" id="pinSaveBtn">Save pin</button>
@@ -572,7 +565,7 @@
   let projTop  = LS.get("inbox.projTop", false);  // file as the NEXT action
   let projects = LS.get("inbox.projects", []);    // cached /projects, for offline
   let queue = LS.get("inbox.queue", []);        // captures awaiting the backend
-  let pins = LS.get("inbox.pins", []);          // [{id, label, file, mode}]
+  let pins = LS.get("inbox.pins", []).map(p=>Object.assign({}, p, {mode:"list"}));  // old link pins become live lists          // [{id, label, file, mode}]
   let session = [];                              // what we show this session
   let pinEditMode = false;                        // wiggle / tap-to-edit
   let lastOk = null;
@@ -627,13 +620,6 @@
     // encode each segment, keep slashes as %2F per Obsidian URI rules
     return p.split("/").map(encodeURIComponent).join("%2F");
   }
-  function openInObsidian(file){
-    if(!cfg.vault){ openSheet(); return; }      // need a vault name first
-    const url = "obsidian://open?vault=" + encodeURIComponent(cfg.vault) +
-                "&file=" + encPath(file.replace(/\.md$/,""));
-    // a user-gesture navigation hands the obsidian:// link to the OS
-    window.location.href = url;
-  }
   function renderPins(){
     pinsEl.innerHTML = "";
     for(const p of pins){
@@ -657,14 +643,13 @@
         if(pinEditMode){ openPinSheet(p); return; }
         // a `list` pin renders live through the backend — the whole point,
         // since mobile Obsidian shows a vault that hasn't synced
-        if(p.mode==="list") showList(p.file, p.label);
-        else openInObsidian(p.file);
+        showList(p.file, p.label);
       });
       pinsEl.append(chip);
     }
     const add=document.createElement("button");
     add.className="chip add";
-    add.innerHTML='<span class="obs">+</span><span class="lbl">pin a note</span>';
+    add.innerHTML='<span class="obs">+</span><span class="lbl">pin a list</span>';
     add.addEventListener("click", ()=>openPinSheet(null));
     pinsEl.append(add);
   }
@@ -828,7 +813,6 @@
     $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
     $("cfgTarget").value=cfg.target||"AutomatedNotes/00 Inbox.md";
     $("cfgOutside").value=cfg.outside||"outside-list.md";
-    $("cfgVault").value=cfg.vault||"";
     $("testResult").textContent=""; $("testResult").className="test-result";
     scrim.classList.add("open"); sheet.classList.add("open");
   }
@@ -845,8 +829,7 @@
       url:$("cfgUrl").value.trim(),
       token:$("cfgToken").value,
       target:$("cfgTarget").value.trim()||"AutomatedNotes/00 Inbox.md",
-      outside:$("cfgOutside").value.trim()||"outside-list.md",
-      vault:$("cfgVault").value.trim()
+      outside:$("cfgOutside").value.trim()||"outside-list.md"
     };
     LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins();
     setComposeTarget(composeTarget); loadProjects(); flush(true);
@@ -867,10 +850,9 @@
   function openPinSheet(pin){
     sheet.classList.remove("open");
     editingPin = pin;
-    $("pinSheetTitle").textContent = pin ? "Edit pin" : "Pin a note";
+    $("pinSheetTitle").textContent = pin ? "Edit pin" : "Pin a list";
     $("pinLabel").value = pin ? pin.label : "";
     $("pinFile").value  = pin ? pin.file  : "";
-    $("pinMode").value  = (pin && pin.mode) || "link";
     $("pinDeleteBtn").style.display = pin ? "" : "none";
     scrim.classList.add("open"); pinSheet.classList.add("open");
     if(!pin) setTimeout(()=>$("pinLabel").focus(), 80);
@@ -879,7 +861,7 @@
     const label=$("pinLabel").value.trim();
     const file=$("pinFile").value.trim();
     if(!label || !file) return;
-    const mode=$("pinMode").value==="list"?"list":"link";
+    const mode="list";             // live list is the only mode now
     if(editingPin){
       editingPin.label=label; editingPin.file=file; editingPin.mode=mode;
     }else{

@@ -414,9 +414,9 @@
     }
     // A completed line in the month file is the record, not a worklist
     // item — there is nothing to drop, so no × on it.
-    if(!item.checked && addr.pane!=="dropped"){
-      const rm = el("button","x","×"); rm.title="Drop (kept in Dropped.md)";
-      rm.addEventListener("click", ()=>drop(r.dataset.text,
+    if(!item.checked){
+      const rm = el("button","x","×"); rm.title="Delete";
+      rm.addEventListener("click", ()=>del(r.dataset.text,
         JSON.parse(r.dataset.addr), r.dataset.project, r));
       acts.append(rm);
     }
@@ -426,9 +426,9 @@
     r.tabIndex = 0;
     r.addEventListener("keydown", e=>{
       if(e.key!=="Backspace" && e.key!=="Delete") return;
-      if(item.checked || addr.pane==="dropped") return;
+      if(item.checked) return;
       e.preventDefault();
-      drop(r.dataset.text, JSON.parse(r.dataset.addr), r.dataset.project, r);
+      del(r.dataset.text, JSON.parse(r.dataset.addr), r.dataset.project, r);
     });
     return r;
   }
@@ -634,7 +634,7 @@
     // side of the screen — which is how a line dropped on a future date
     // ended up in the graveyard. It is hit-tested against the pointer at
     // release instead, so it can only catch what is actually over it.
-    const t = el("div","trash","drag here to drop · kept in Dropped.md");
+    const t = el("div","trash","drag here to delete");
     t.id = "trash";
     host.append(t);
   }
@@ -728,35 +728,6 @@
     }
     host.append(acard);
 
-    // The graveyard. A drag source like any other pane, so restoring is
-    // just dragging a line back out — no separate restore path to get
-    // wrong. Collapsed by default: it is a record, not a worklist.
-    const gone = (data.dropped&&data.dropped.days)||[];
-    const dcard = el("div","card");
-    const dh = el("div","card-head");
-    dh.append(el("span",null,"dropped"));
-    dh.append(el("span","n", String(gone.reduce((s,d)=>s+d.items.length,0))));
-    dcard.append(dh);
-    if(!gone.length){
-      dcard.append(el("div","empty","nothing dropped this week"));
-    }
-    for(const d of gone){
-      const key = "d:"+d.date;
-      const g = group(fmtD(d.date), "date", d.items.length, key);
-      g.querySelector(".chev").textContent = collapsed.has(key)? "▾" : "▸";
-      dcard.append(g);
-      const l = lane({pane:"dropped", date:d.date}, {mini:true});
-      if(collapsed.has(key)){                    // default closed
-        for(const it of d.items){
-          const r = row(it, {pane:"dropped", date:d.date}, {plain:true});
-          r.classList.add("gone");
-          if(it.origin) r.querySelector(".tx").append(el("span","badge route", it.origin));
-          l.append(r);
-        }
-      }
-      dcard.append(l);
-    }
-    host.append(dcard);
   }
 
   function projectCard(title, pane, d){
@@ -859,9 +830,9 @@
           const onTrash = overTrash();
           markTarget(null);
           if(onTrash){
-            // Released over the strip: the row goes to the graveyard
-            // wherever Sortable happened to park it.
-            drop(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
+            // Released over the strip: the row is deleted wherever
+            // Sortable happened to park it.
+            del(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
                  e.item.dataset.project || null, e.item);
             return;
           }
@@ -920,7 +891,7 @@
     if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
     if(a.pane==="inbox") return "inbox";
     if(a.pane==="aar") return "append and review · " + (a.category||"");
-    if(a.pane==="dropped") return "dropped";
+    if(a.pane==="delete") return "delete";
     if(a.project) return a.project.replace(/[\[\]]/g,"");
     if(a.pane) return a.pane;
     return "";
@@ -974,7 +945,7 @@
         // A dropped line leaves the screen wherever the drop came from —
         // the × button, Backspace, or the strip. Nothing reloads, so the
         // row has to go by itself.
-        if(el2 && to.pane==="dropped") el2.remove();
+        if(el2 && to.pane==="delete") el2.remove();
         else if(el2) applyMoved(el2, to, j.project);
         retotal();
         markDirty();
@@ -1006,7 +977,7 @@
       if(old) old.remove();
       if(project) tx.append(el("span","badge proj", project.replace(/[\[\]]/g,"")));
     }
-    node.classList.toggle("gone", to.pane==="dropped");
+    node.classList.toggle("gone", to.pane==="delete");
   }
 
   /** Recompute each block's open count from the rows actually in it.
@@ -1031,14 +1002,11 @@
     setConn("online", "edited · ↻");
   }
 
-  // Dropping is a move to the graveyard, not a delete: the line leaves its
-  // note and is logged in Dropped.md under today's date with where it came
-  // from. So there is no confirm dialog — an undo you can actually use
-  // beats a modal you learn to click through, and the line is recoverable
-  // from the note either way.
-  async function drop(text, from, project, node){
-    if(from.pane==="dropped") return;
-    await move(text, from, {pane:"dropped"}, project, null, null, node);
+  // Delete removes the line from its note and keeps nothing: the backend
+  // clears the source and writes no destination. No confirm dialog — the
+  // 5-second undo re-adds the line, and every write is a git commit.
+  async function del(text, from, project, node){
+    await move(text, from, {pane:"delete"}, project, null, null, node);
   }
 
   // /check returns the same shape /board's `day` has, minus `sections`.
@@ -1123,7 +1091,10 @@
       // because a move is symmetric by construction. This one DOES reload:
       // the row is sitting where you dropped it and has to go back, and an
       // undo is deliberate enough to be worth the round trip.
-      await move(text, to, from, project);
+      // Undoing a delete re-adds the line where it was; the "source" is an
+      // empty inbox lookup that clears nothing.
+      if(to.pane==="delete") await move(text, {pane:"inbox"}, from, project);
+      else await move(text, to, from, project);
       await refresh();
     });
     t.append(b);
@@ -1134,7 +1105,7 @@
     if(to.pane==="future") return "scheduled for "+fmtD(to.date);
     if(to.pane==="inbox") return "back to the inbox";
     if(to.pane==="aar") return "filed under "+to.category;
-    if(to.pane==="dropped") return "dropped · kept in Dropped.md";
+    if(to.pane==="delete") return "deleted";
     if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
     return "moved";
   }
