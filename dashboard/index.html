@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0d1513" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="../icon-192.png" />
@@ -234,6 +234,57 @@
   .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
   .blk.collapsed .blk-head .chev{transform:rotate(-90deg)}
   .blk.collapsed .lane, .blk.collapsed .adder, .blk.collapsed .evt{display:none}
+
+  /* ── phone ───────────────────────────── */
+  .mtabs, .mvscrim, .mv{display:none}
+  .rowacts .mvb{display:none}
+  @media (hover:none){
+    .rowacts{opacity:1}
+    .row{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
+    .row [contenteditable]{-webkit-user-select:text; user-select:text}
+  }
+  @media (max-width:860px){
+    body{display:block; overflow:visible; min-height:100dvh;
+         padding-bottom:calc(4.2rem + env(safe-area-inset-bottom,0px))}
+    header{position:sticky; top:0; z-index:20; background:var(--bg); flex-wrap:wrap; gap:.4rem .6rem;
+           padding:calc(.5rem + env(safe-area-inset-top,0px)) .8rem .5rem}
+    .nav{margin-left:0; order:2}
+    .day-label{min-width:7rem}
+    .hdr-right{order:1; margin-left:auto; gap:.35rem}
+    .ctx, .status-txt, #routeBtn{display:none}
+    .tagbar{order:3; flex:1 0 100%; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:.1rem}
+    .tagbar .chip{flex:none; min-height:32px; padding:.2rem .7rem; font-size:.78rem}
+    .board{display:block; overflow:visible; padding:.7rem .8rem}
+    .col{overflow:visible; padding-right:0}
+    body[data-view="day"] #colSrc, body[data-view="src"] #colDay{display:none}
+    .ghost, .nav button{min-height:36px; min-width:36px}
+    .row{min-height:44px; padding:.3rem .4rem}
+    .rowacts{gap:.1rem}
+    .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
+    .rowacts .mvb{display:inline-block}
+    .rowacts button:not(.mvb):not(.star):not(.x){display:none}
+    .blk-head{min-height:44px}
+    input, textarea, [contenteditable]{font-size:16px}
+    .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
+    .toast{bottom:calc(4.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
+    .mtabs{display:flex; position:fixed; left:0; right:0; bottom:0; z-index:25; background:var(--bg);
+           border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
+    .mtabs button{flex:1; min-height:52px; background:none; border:0; color:var(--faint); font:inherit; font-size:.88rem}
+    .mtabs button.on{color:var(--ink); font-weight:700; box-shadow:inset 0 2px 0 var(--accent)}
+    .mvscrim{display:block; position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:40;
+             opacity:0; pointer-events:none; transition:opacity .2s}
+    .mvscrim.open{opacity:1; pointer-events:auto}
+    .mv{display:flex; flex-direction:column; gap:.15rem; position:fixed; left:0; right:0; bottom:0; z-index:41;
+        background:var(--bg-2); border-top:1px solid var(--line); border-radius:18px 18px 0 0;
+        padding:.8rem .8rem calc(.8rem + env(safe-area-inset-bottom,0px)); max-height:80dvh; overflow-y:auto;
+        transform:translateY(105%); transition:transform .22s}
+    .mv.open{transform:none}
+    .mv .mvt{color:var(--muted); font-size:.82rem; padding:.2rem .5rem .6rem; border-bottom:1px solid var(--line); margin-bottom:.3rem}
+    .mv button{background:none; border:0; color:var(--ink); font:inherit; text-align:left; padding:.8rem .6rem;
+               min-height:48px; border-radius:10px}
+    .mv button:active{background:var(--surface-2)}
+    .mv .danger{color:var(--warn)} .mv .cancel{color:var(--faint)}
+  }
 </style>
 </head>
 <body>
@@ -261,6 +312,13 @@
     <div class="col" id="colDay"></div>
     <div class="col" id="colSrc"></div>
   </div>
+
+  <nav class="mtabs" id="mtabs" aria-label="View">
+    <button data-v="day" class="on">Today</button>
+    <button data-v="src">Sources</button>
+  </nav>
+  <div class="mvscrim" id="mvScrim"></div>
+  <div class="mv" id="mvSheet" role="dialog" aria-label="Move task"></div>
 
   <div class="scrim" id="scrim"></div>
   <div class="sheet" id="sheet" role="dialog" aria-label="Settings">
@@ -406,6 +464,11 @@
            null, null, r).then(ok=>{ if(ok){ r.remove(); retotal(); } });
     }));
     acts.append(ed, sc);
+    if(!item.checked){
+      const mb = el("button","mvb","⋯"); mb.title = "Move, schedule, edit…";
+      mb.addEventListener("click", e=>{ e.stopPropagation(); openMove(r, acts); });
+      acts.prepend(mb);
+    }
     if(opts.tickable && !item.checked){
       const st = el("button","star"+(tg.includes("focus")?" on":""), tg.includes("focus")?"★":"☆");
       st.title = "Focus 3 (resets tomorrow)";
@@ -500,6 +563,46 @@
       if(on) ts.push("focus"); r.dataset.tags = ts.join(" ");
       markDirty(); tagbar();
     }catch(e){ toast("could not set focus"); }
+  }
+
+  // ── phone: view switch + "move to" sheet ──
+  // Dragging between the two columns needs both on screen, which a phone
+  // can't do, so every open row has a ⋯ that moves it without dragging.
+  document.body.dataset.view = "day";
+  $("mtabs").addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    document.body.dataset.view = b.dataset.v;
+    $("mtabs").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+    window.scrollTo(0,0);
+  });
+  function closeMove(){ $("mvSheet").classList.remove("open"); $("mvScrim").classList.remove("open"); }
+  $("mvScrim").addEventListener("click", closeMove);
+  function openMove(r, acts){
+    const sheet = $("mvSheet"), from = JSON.parse(r.dataset.addr), text = r.dataset.text;
+    const title = r.querySelector(".tx") ? r.querySelector(".tx").firstChild.textContent : text;
+    sheet.innerHTML = "";
+    sheet.append(el("div","mvt", title));
+    const add = (label, fn, cls)=>{
+      const b = el("button", cls||null, label);
+      b.addEventListener("click", ()=>{ closeMove(); fn(); }); sheet.append(b);
+    };
+    (data.blocks||[]).forEach(b=>{
+      if(from.pane==="day" && from.block===b.name) return;
+      add("→ "+b.name.toLowerCase()+(b.label?"  "+b.label:""), ()=>
+        move(text, from, {pane:"day", date:viewDate, block:b.name}, r.dataset.project, undefined, null, r));
+    });
+    add("→ tomorrow", async ()=>{
+      const d = parseD(viewDate); d.setDate(d.getDate()+1);
+      if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)){ r.remove(); retotal(); }
+    });
+    const hit = lbl => [...acts.children].find(b=>b.textContent===lbl);
+    const star = acts.querySelector(".star");
+    if(star) add(r.classList.contains("focus") ? "★ remove from focus" : "☆ focus 3", ()=>star.click());
+    if(hit("✎")) add("✎ rename", ()=>hit("✎").click());
+    if(hit("◷")) add("◷ schedule for a date…", ()=>hit("◷").click());
+    if(hit("×")) add("× delete", ()=>hit("×").click(), "danger");
+    add("cancel", ()=>{}, "cancel");
+    $("mvScrim").classList.add("open"); sheet.classList.add("open");
   }
 
   // Dragging onto a folded block opens it after a beat, so folded blocks
@@ -811,6 +914,7 @@
         // claim a pointer that was visibly over its neighbour. 5 is
         // Sortable's own default and matches what the eye expects.
         emptyInsertThreshold:5, filter:".empty,.adder",
+        delay:180, delayOnTouchOnly:true, touchStartThreshold:8,
         onStart: ()=>{
           document.body.classList.add("dragging");
           PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
