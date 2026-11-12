@@ -222,14 +222,11 @@
   .chip{font:inherit; font-size:.72rem; padding:.12rem .55rem; border:1px solid var(--line);
     border-radius:99px; background:none; color:var(--faint); cursor:pointer}
   .chip.on{background:var(--accent); color:#1a1206; border-color:var(--accent)}
-  .focusn{font-family:var(--mono); font-size:.72rem; color:var(--accent); margin-left:.3rem}
   .badge.tg{border-radius:6px; margin-left:.4rem; color:var(--tc,var(--faint)); border-color:transparent;
     background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
   .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
   .t-call{--tc:#b7a0dc} .t-habit{--tc:var(--accent)}
   .row.dim{opacity:.28}
-  .row.focus{box-shadow:inset 3px 0 0 var(--accent)}
-  .rowacts .star{color:var(--faint)} .rowacts .star.on{color:var(--accent)}
   .blk-head{cursor:pointer; user-select:none}
   .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
   .blk.collapsed .blk-head .chev{transform:rotate(-90deg)}
@@ -262,7 +259,7 @@
     .rowacts{gap:.1rem}
     .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
     .rowacts .mvb{display:inline-block}
-    .rowacts button:not(.mvb):not(.star):not(.x){display:none}
+    .rowacts button:not(.mvb):not(.x){display:none}
     .blk-head{min-height:44px}
     input, textarea, [contenteditable]{font-size:16px}
     .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
@@ -285,6 +282,7 @@
     .mv button:active{background:var(--surface-2)}
     .mv .danger{color:var(--warn)} .mv .cancel{color:var(--faint)}
   }
+  .ghost.save{border-color:var(--accent); color:var(--accent)}
 </style>
 </head>
 <body>
@@ -301,7 +299,9 @@
     <div class="hdr-right">
       <button class="ghost" id="routeBtn" title="Shade each task by where /defer would send it tomorrow">defer view</button>
       <button class="ghost" id="buildBtn" hidden>build the day</button>
-      <button class="ghost" id="refreshBtn">↻</button>
+      <button class="ghost" id="roughBtn" title="Rough night: keep the first 3 tasks today, send the rest back where they came from">rough night</button>
+      <button class="ghost save" id="batchBtn" hidden>save (0)</button>
+      <button class="ghost" id="refreshBtn" title="Save and reload">↻</button>
       <span class="dot" id="dot"></span>
       <span class="status-txt" id="statusTxt">—</span>
       <button class="ghost" id="gearBtn" aria-label="Settings">⚙</button>
@@ -369,7 +369,7 @@
   // Tags: plain inline #tokens in a fixed vocabulary; they stay in the task
   // text (the backend strips them only for identity), so a rename keeps them.
   const TAGS = ["urgent","home","phone","call","habit"];
-  const TAG_RE = /(^|\s)#(urgent|home|phone|call|habit|focus)\b/gi;
+  const TAG_RE = /(^|\s)#(urgent|home|phone|call|habit)\b/gi;
   const tagsOf = s => { const o=[]; let m; TAG_RE.lastIndex=0;
     while((m=TAG_RE.exec(s||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); }
     return o; };
@@ -378,14 +378,65 @@
   const blkState = {};       // "date|block" → true = open; session only
 
   // ── api ────────────────────────────────
-  function api(path, opts){
+  function rawFetch(path, opts){
     return fetch(cfg.url.replace(/\/+$/,"")+path, Object.assign({
       headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+(cfg.token||"") }
     }, opts||{}));
   }
+  // Board edits (/move, /check) are NOT sent one by one: they queue here and
+  // go out together when you press Save (POST /batch) — one commit per note
+  // instead of one per action. The caller gets an instant synthetic "ok", so
+  // every existing code path (drag, tick, rename, delete, undo) is unchanged.
+  const BATCHED = new Set(["/move","/check"]);
+  let queue = [];
+  function api(path, opts){
+    const o = opts || {};
+    if(o.method==="POST" && BATCHED.has(path)){
+      const body = JSON.parse(o.body || "{}");
+      queue.push({path:path, body:body});
+      updateBatchUI();
+      const out = path==="/move"
+        ? { ok:true, project:(body.to && body.to.project) || (body.from && body.from.project) || undefined }
+        : (data && data.day ? data.day : {});
+      return Promise.resolve(new Response(JSON.stringify(out), {status:200}));
+    }
+    return rawFetch(path, o);
+  }
+  function updateBatchUI(){
+    const b = $("batchBtn"); if(!b) return;
+    b.hidden = !queue.length;
+    b.textContent = "save ("+queue.length+")";
+    if(queue.length) setConn("online", queue.length+" unsaved");
+  }
+  // true = saved (or nothing to save), false = server rejected the batch
+  // (nothing was written; queue dropped so the board can reload), null =
+  // couldn't reach the server (queue kept — your changes are still here).
+  async function flush(){
+    if(!queue.length) return true;
+    const ops = queue.slice();
+    setConn(null, "saving…");
+    try{
+      const r = await rawFetch("/batch", {method:"POST", body:JSON.stringify({ops:ops})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok){
+        queue = []; updateBatchUI();
+        toastBad("couldn't save ("+(j.error||r.status)+(j.index!=null?", change "+(j.index+1):"")+") — nothing was written, reloading");
+        return false;
+      }
+      queue = []; updateBatchUI();
+      setConn("online", j.commits ? "saved · "+j.commits+" commit"+(j.commits>1?"s":"") : "saved");
+      return true;
+    }catch(e){
+      setConn("offline", "not saved");
+      toastBad("couldn't reach the server — your changes are still here");
+      return null;
+    }
+  }
+  addEventListener("beforeunload", e=>{ if(queue.length){ e.preventDefault(); e.returnValue=""; } });
   function setConn(state, note){
     $("dot").className = "dot"+(state?" "+state:"");
-    $("statusTxt").textContent = note || (state==="online"?"synced":state==="offline"?"offline":"—");
+    $("statusTxt").textContent = note || (queue.length ? queue.length+" unsaved"
+      : state==="online"?"synced":state==="offline"?"offline":"—");
   }
 
   // ── dates ──────────────────────────────
@@ -446,8 +497,7 @@
     const tg = tagsOf(item.text);
     const tx = el("span","tx", stripTags(item.text));
     r.dataset.tags = tg.join(" ");
-    if(tg.includes("focus")) r.classList.add("focus");
-    tg.forEach(t=>{ if(t!=="focus") tx.append(el("span","badge tg t-"+t, "#"+t)); });
+    tg.forEach(t=>{ tx.append(el("span","badge tg t-"+t, "#"+t)); });
     if(item.hint) tx.append(el("span","badge", "~"+fmtMin(item.hint)));
     if(item.project){
       const p = el("span","badge proj", item.project.replace(/[\[\]]/g,""));
@@ -468,12 +518,6 @@
       const mb = el("button","mvb","⋯"); mb.title = "Move, schedule, edit…";
       mb.addEventListener("click", e=>{ e.stopPropagation(); openMove(r, acts); });
       acts.prepend(mb);
-    }
-    if(opts.tickable && !item.checked){
-      const st = el("button","star"+(tg.includes("focus")?" on":""), tg.includes("focus")?"★":"☆");
-      st.title = "Focus 3 (resets tomorrow)";
-      st.addEventListener("click", ()=>focusToggle(r, st, item));
-      acts.prepend(st);
     }
     // A completed line in the month file is the record, not a worklist
     // item — there is nothing to drop, so no × on it.
@@ -523,6 +567,8 @@
     $("dayLabel").innerHTML = "";
     $("dayLabel").append(el("span",null,fmtD(viewDate)), el("span","rel",relD(viewDate)));
     $("buildBtn").hidden = data.day.exists || viewDate !== data.today;
+    $("roughBtn").hidden = !data.day.exists || viewDate !== data.today;
+    if(data.day.cap) $("dayLabel").append(el("span","rel","cap "+data.day.cap));
     $("routeBtn").classList.toggle("on", routeView);
     renderDay();
     renderSources();
@@ -530,7 +576,7 @@
     tagbar();
   }
 
-  // ── tags: filter chips + Focus 3 counter ──
+  // ── tags: filter chips ──
   function tagbar(){
     const host = $("tagbar"); if(!host) return;
     const rows = [...document.querySelectorAll(".row:not(.done)")];
@@ -543,26 +589,8 @@
     };
     chip("all","",null);
     TAGS.forEach(t=>chip("#"+t, t, rows.filter(r=>(r.dataset.tags||"").split(" ").includes(t)).length, "t-"+t));
-    const f = document.querySelectorAll("#colDay .row.focus:not(.done)").length;
-    host.append(el("span","focusn","★ "+f+" / 3"));
     document.querySelectorAll(".row").forEach(r=>
       r.classList.toggle("dim", !!tagFilter && !(r.dataset.tags||"").split(" ").includes(tagFilter)));
-  }
-
-  async function focusToggle(r, st, item){
-    const on = !r.classList.contains("focus");
-    try{
-      const res = await api("/focus",{method:"POST",
-        body:JSON.stringify({date:viewDate, text:item.text, focus:on})});
-      if(res.status===409){ toast("focus is full — unstar one first"); return; }
-      if(!res.ok){ toast("could not set focus"); return; }
-      r.classList.toggle("focus", on);
-      st.classList.toggle("on", on); st.textContent = on?"★":"☆";
-      // the vault line now carries/loses #focus; keep the row's tags in step
-      const ts = (r.dataset.tags||"").split(" ").filter(x=>x&&x!=="focus");
-      if(on) ts.push("focus"); r.dataset.tags = ts.join(" ");
-      markDirty(); tagbar();
-    }catch(e){ toast("could not set focus"); }
   }
 
   // ── phone: view switch + "move to" sheet ──
@@ -596,8 +624,6 @@
       if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)){ r.remove(); retotal(); }
     });
     const hit = lbl => [...acts.children].find(b=>b.textContent===lbl);
-    const star = acts.querySelector(".star");
-    if(star) add(r.classList.contains("focus") ? "★ remove from focus" : "☆ focus 3", ()=>star.click());
     if(hit("✎")) add("✎ rename", ()=>hit("✎").click());
     if(hit("◷")) add("◷ schedule for a date…", ()=>hit("◷").click());
     if(hit("×")) add("× delete", ()=>hit("×").click(), "danger");
@@ -625,7 +651,7 @@
   }
   function norm(s){
     return (s||"").replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/,"")
-      .replace(/(^|\s)#(?:urgent|home|phone|call|habit|focus)\b/gi," ")
+      .replace(/(^|\s)#(?:urgent|home|phone|call|habit)\b/gi," ")
       .replace(/\s*\|\s*[^|]*$/,"").replace(/[\[\]]/g,"")
       .replace(/\s+/g," ").trim().toLowerCase();
   }
@@ -760,6 +786,7 @@
   // ── render: the sources ────────────────
   function renderSources(){
     const host = $("colSrc"); host.innerHTML = "";
+    if(data.loading) host.append(el("div","empty","loading sources…"));
     if((data.missing||[]).length){
       const w = el("div","warnbar",
         "not found in the vault: "+data.missing.join(", ")+" — set its path in the service env");
@@ -906,8 +933,8 @@
   }
 
   // ── drag wiring ────────────────────────
-  function wire(){
-    document.querySelectorAll(".lane").forEach(l=>{
+  function wire(root){
+    (root || document).querySelectorAll(".lane").forEach(l=>{
       Sortable.create(l, {
         group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
         // 14px was too greedy with lanes stacked this close: a lane could
@@ -1054,7 +1081,7 @@
         retotal();
         markDirty();
         offerUndo(text, from, to, j.project);
-        setConn("online", "edited · ↻");
+        updateBatchUI();
         return true;
       }
       setConn("online");
@@ -1103,7 +1130,7 @@
 
   function markDirty(){
     dirty = true;
-    setConn("online", "edited · ↻");
+    updateBatchUI();
   }
 
   // Delete removes the line from its note and keeps nothing: the backend
@@ -1255,31 +1282,38 @@
   // ── load ───────────────────────────────
   async function refresh(){
     if(!cfg.url){ openSheet(); return; }
+    if(queue.length){ const ok = await flush(); if(ok===null) return; }
     setConn(null,"loading…");
+    const q = "date="+encodeURIComponent(viewDate);
+    const get = panes => api("/board?"+q+"&panes="+panes).then(r=>{
+      if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
     try{
-      // /board carries the tasks, the blocks, their capacities and the
-      // day's events. /context is fetched only for the weather line, and
-      // only when this date's copy is older than 15 minutes — a forecast
-      // does not move between two moves of a task.
+      // Stage 1 — the day and the calendar. Today paints as soon as this
+      // returns, without waiting on the other four notes.
       const cached = ctxCache[viewDate];
       const needCtx = !cached || Date.now()-cached.at > CTX_STALE_MS;
-      const [b, c] = await Promise.all([
-        api("/board?date="+encodeURIComponent(viewDate)).then(r=>{
-          if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }),
-        needCtx ? api("/context?date="+encodeURIComponent(viewDate))
-                    .then(r=>r.ok?r.json():null).catch(()=>null)
-                : Promise.resolve(cached.data)
-      ]);
-      if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
-      data = b; data.context = c; fetchedAt = Date.now(); dirty = false;
-      renderCtx(c);
+      const ctxP = needCtx ? api("/context?date="+encodeURIComponent(viewDate))
+                                .then(r=>r.ok?r.json():null).catch(()=>null)
+                           : Promise.resolve(cached.data);
+      const b = await get("day");
+      data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
+        stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]}, loading:true}, b);
+      fetchedAt = Date.now(); dirty = false;
       setConn("online");
       render();
+      ctxP.then(c=>{ if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c}; data.context = c; renderCtx(c); });
+      // Stage 2 — everything else, in the background.
+      const rest = await get("inbox,priorities,future,stalled,aar");
+      const myDate = viewDate;
+      if(myDate !== viewDate) return;             // you changed day meanwhile
+      Object.assign(data, rest, {loading:false, missing:[...(data.missing||[]), ...(rest.missing||[])]});
+      renderSources(); wire($("colSrc")); tagbar();
     }catch(e){
       setConn("offline", "couldn't load");
       toastBad("couldn't load the board — "+e.message);
     }
   }
+
   function renderCtx(c){
     const host=$("ctx"); host.innerHTML="";
     if(!c) return;
@@ -1297,6 +1331,19 @@
   $("nextDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,1); refresh(); });
   $("todayBtn").addEventListener("click",()=>{ viewDate=data?data.today:viewDate; refresh(); });
   $("refreshBtn").addEventListener("click",refresh);
+  $("batchBtn").addEventListener("click", async ()=>{ await flush(); });
+  $("roughBtn").addEventListener("click", async ()=>{
+    if(!confirm("Rough night? Keep the first 3 open tasks today and send the rest back where they came from.")) return;
+    if(queue.length){ const ok = await flush(); if(ok===null) return; }
+    setConn(null, "adjusting…");
+    try{
+      const r = await rawFetch("/rough", {method:"POST", body:"{}"});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error || r.status);
+      toast("kept "+j.rough.kept+" · held "+j.rough.held+" for later");
+    }catch(e){ toastBad("couldn't: "+e.message); }
+    refresh();
+  });
   $("routeBtn").addEventListener("click",()=>{ routeView=!routeView; render(); });
   $("buildBtn").addEventListener("click",async()=>{
     $("buildBtn").disabled=true; setConn(null,"building…");
