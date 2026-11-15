@@ -225,7 +225,7 @@
   .badge.tg{border-radius:6px; margin-left:.4rem; color:var(--tc,var(--faint)); border-color:transparent;
     background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
   .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
-  .t-call{--tc:#b7a0dc} .t-habit{--tc:var(--accent)}
+  .t-call{--tc:#b7a0dc}
   .row.dim{opacity:.28}
   .blk-head{cursor:pointer; user-select:none}
   .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
@@ -299,6 +299,7 @@
     <div class="hdr-right">
       <button class="ghost" id="routeBtn" title="Shade each task by where /defer would send it tomorrow">defer view</button>
       <button class="ghost" id="buildBtn" hidden>build the day</button>
+      <button class="ghost" id="moreBtn" hidden title="Finished everything? Pull the next batch from your sources">more</button>
       <button class="ghost" id="roughBtn" title="Rough night: keep the first 3 tasks today, send the rest back where they came from">rough night</button>
       <button class="ghost save" id="batchBtn" hidden>save (0)</button>
       <button class="ghost" id="refreshBtn" title="Save and reload">↻</button>
@@ -368,8 +369,8 @@
   const collapsed = new Set(LS.get("board.collapsed", []));
   // Tags: plain inline #tokens in a fixed vocabulary; they stay in the task
   // text (the backend strips them only for identity), so a rename keeps them.
-  const TAGS = ["urgent","home","phone","call","habit"];
-  const TAG_RE = /(^|\s)#(urgent|home|phone|call|habit)\b/gi;
+  const TAGS = ["urgent","home","phone","call"];
+  const TAG_RE = /(^|\s)#(urgent|home|phone|call)\b/gi;
   const tagsOf = s => { const o=[]; let m; TAG_RE.lastIndex=0;
     while((m=TAG_RE.exec(s||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); }
     return o; };
@@ -568,6 +569,12 @@
     $("dayLabel").append(el("span",null,fmtD(viewDate)), el("span","rel",relD(viewDate)));
     $("buildBtn").hidden = data.day.exists || viewDate !== data.today;
     $("roughBtn").hidden = !data.day.exists || viewDate !== data.today;
+    // "more" shows only for TODAY, when the day is built and nothing is left
+    // open — the moment a top-up makes sense.
+    let open = 0;
+    (function countOpen(ns){ for(const n of ns||[]){ if(n.box && !n.checked) open++; countOpen(n.children); } })
+      (data.day.tasks||[]);
+    $("moreBtn").hidden = !data.day.exists || viewDate !== data.today || open > 0;
     if(data.day.cap) $("dayLabel").append(el("span","rel","cap "+data.day.cap));
     $("routeBtn").classList.toggle("on", routeView);
     renderDay();
@@ -651,7 +658,7 @@
   }
   function norm(s){
     return (s||"").replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/,"")
-      .replace(/(^|\s)#(?:urgent|home|phone|call|habit)\b/gi," ")
+      .replace(/(^|\s)#(?:urgent|home|phone|call)\b/gi," ")
       .replace(/\s*\|\s*[^|]*$/,"").replace(/[\[\]]/g,"")
       .replace(/\s+/g," ").trim().toLowerCase();
   }
@@ -1353,6 +1360,20 @@
       toast("day built");
     }catch(e){ toastBad("couldn't build the day"); }
     finally{ $("buildBtn").disabled=false; refresh(); }
+  });
+  $("moreBtn").addEventListener("click",async()=>{
+    $("moreBtn").disabled=true; setConn(null,"pulling…");
+    try{
+      const r=await rawFetch("/more", {method:"POST", body:"{}"});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error || r.status);
+      if(j.reason) toast("nothing to pull");
+      else toast("pulled "+j.added+" · "
+        +[["priorities",j.from_priorities],["projects",j.from_projects],
+          ["future",j.from_future],["inbox",j.from_inbox]]
+          .filter(p=>p[1]).map(p=>p[1]+" "+p[0]).join(", "));
+    }catch(e){ toastBad("couldn't pull more: "+e.message); }
+    finally{ $("moreBtn").disabled=false; refresh(); }
   });
   document.addEventListener("keydown",e=>{
     if(e.target.matches("input,[contenteditable=true]")) return;

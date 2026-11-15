@@ -408,7 +408,7 @@
 
   /* tags, focus, collapsing panels */
   .t-urgent{--tc:var(--warn,#d98a6a)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
-  .t-call{--tc:#b7a0dc} .t-habit{--tc:var(--accent)}
+  .t-call{--tc:#b7a0dc}
   .tagp{display:inline-block; margin-left:.4rem; font-size:.66rem; padding:0 .35rem; border-radius:6px;
     color:var(--tc); background:color-mix(in srgb,var(--tc) 14%,transparent)}
   .task-row.dim{opacity:.28}
@@ -1038,8 +1038,8 @@
 
   // Tags are plain inline #tokens kept IN the task text; the backend sends
   // `tags` and a tag-free `title` alongside `text` (which is what /check needs).
-  const TAGS=["urgent","home","phone","call","habit"];
-  const TAG_RE=/(^|\s)#(urgent|home|phone|call|habit)\b/gi;
+  const TAGS=["urgent","home","phone","call"];
+  const TAG_RE=/(^|\s)#(urgent|home|phone|call)\b/gi;
   const tagsOf=n=>{ if(n.tags) return n.tags; const o=[]; let m; TAG_RE.lastIndex=0;
     while((m=TAG_RE.exec(n.text||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); } return o; };
   const titleOf=n=>n.title || (n.text||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
@@ -1413,7 +1413,7 @@
   if(!box||!ta) return;
   const has=t=>new RegExp("(^|\\s)#"+t+"\\b","i").test(ta.value);
   const sync=()=>box.querySelectorAll("button").forEach(b=>b.classList.toggle("on",has(b.dataset.t)));
-  ["urgent","home","phone","call","habit"].forEach(t=>{
+  ["urgent","home","phone","call"].forEach(t=>{
     const b=document.createElement("button"); b.type="button"; b.dataset.t=t; b.textContent="#"+t;
     b.className="tagbtn t-"+t;
     b.addEventListener("click",()=>{
