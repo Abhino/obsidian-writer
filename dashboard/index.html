@@ -33,10 +33,41 @@
   /* ── header ───────────────────────────── */
   header{
     display:flex; align-items:center; gap:.7rem; flex:none;
-    padding:.7rem 1.1rem; border-bottom:1px solid var(--line);
+    padding:.6rem 1.1rem; border-bottom:1px solid var(--line);
   }
-  .mark{font-size:1.05rem; font-weight:700; letter-spacing:-.02em}
-  .nav{display:flex; align-items:center; gap:.2rem; margin-left:.5rem}
+  .iconbtn{
+    background:none; border:1px solid transparent; color:var(--muted);
+    font:inherit; font-size:1rem; padding:.2rem .5rem; border-radius:7px;
+    cursor:pointer; display:none;
+  }
+  .iconbtn:hover{color:var(--ink); border-color:var(--line)}
+  .mark{font-size:1.05rem; font-weight:700; letter-spacing:-.02em; flex:none}
+  .omni{position:relative; flex:1; max-width:520px; margin:0 auto; display:flex; align-items:center}
+  .omni input{
+    width:100%; background:var(--surface); border:1px solid var(--line);
+    border-radius:11px; color:var(--ink); font-family:var(--mono); font-size:.82rem;
+    padding:.5rem 2.9rem .5rem .8rem; outline:none;
+  }
+  .omni input:focus{border-color:var(--accent-dim)}
+  .omni input::placeholder{color:var(--faint)}
+  .omni kbd{
+    position:absolute; right:.55rem; font-family:var(--mono); font-size:.66rem;
+    color:var(--faint); border:1px solid var(--line); border-radius:6px; padding:.05rem .35rem;
+    pointer-events:none;
+  }
+  .omnidrop{
+    position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:35;
+    background:var(--bg-2); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.45);
+  }
+  .omnirow{
+    display:flex; gap:.6rem; align-items:baseline; width:100%; text-align:left;
+    background:none; border:0; color:var(--ink); font:inherit; font-size:.8rem;
+    padding:.5rem .8rem; cursor:pointer;
+  }
+  .omnirow:hover{background:var(--surface-2)}
+  .omnirow .omniwhere{font-family:var(--mono); font-size:.64rem; color:var(--faint); flex:none; min-width:5.5rem}
+  .nav{display:flex; align-items:center; gap:.2rem; flex:none}
   .nav button{
     background:none; border:1px solid transparent; color:var(--muted);
     font:inherit; font-size:.9rem; padding:.2rem .5rem; border-radius:7px; cursor:pointer;
@@ -44,12 +75,6 @@
   .nav button:hover{color:var(--ink); border-color:var(--line)}
   .day-label{font-weight:600; font-size:.95rem; min-width:9.5rem; text-align:center}
   .day-label .rel{color:var(--faint); font-weight:400; font-size:.8rem; margin-left:.35rem}
-  .ctx{
-    font-family:var(--mono); font-size:.72rem; color:var(--muted);
-    display:flex; gap:.45rem; align-items:center; overflow:hidden;
-    white-space:nowrap; text-overflow:ellipsis;
-  }
-  .ctx .sep{color:var(--faint)}
   .hdr-right{margin-left:auto; display:flex; align-items:center; gap:.5rem; flex:none}
   .status-txt{font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums}
   .dot{width:7px; height:7px; border-radius:50%; background:var(--faint)}
@@ -61,14 +86,66 @@
   .ghost:hover{color:var(--ink); border-color:var(--accent-dim)}
   .ghost.on{color:var(--accent); border-color:var(--accent-dim)}
   .ghost:disabled{opacity:.45; cursor:default}
+  .ghost.mini{font-size:.66rem; padding:.15rem .45rem}
+  .ghost.save{background:var(--accent); color:#1a1206; border-color:var(--accent); font-weight:600}
 
-  /* ── layout: today wide, sources in a rail ── */
-  .board{flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);
-         gap:1rem; padding:1rem 1.1rem 1.2rem; overflow:hidden}
-  .col{min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.7rem;
-       scrollbar-width:thin; scrollbar-color:var(--line) transparent; padding-right:.2rem}
-  .col::-webkit-scrollbar{width:8px}
-  .col::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px}
+  /* ── layout: sidebar | center | rail ──── */
+  .shell{
+    flex:1; min-height:0; display:grid;
+    grid-template-columns:198px minmax(0,1fr) 292px;
+    gap:1rem; padding:1rem 1.1rem 1.2rem; overflow:hidden;
+  }
+  .side{
+    min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.15rem;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent; padding-right:.2rem;
+  }
+  .navitem{
+    display:flex; align-items:center; gap:.55rem; width:100%;
+    background:none; border:1px solid transparent; color:var(--muted);
+    font:inherit; font-size:.86rem; padding:.44rem .65rem; border-radius:9px;
+    cursor:pointer; text-align:left;
+  }
+  .navitem:hover{color:var(--ink); background:var(--surface)}
+  .navitem.on{color:var(--ink); background:var(--surface-2); font-weight:600}
+  .navitem .n{margin-left:auto; font-family:var(--mono); font-size:.68rem; color:var(--faint); font-weight:400}
+  .side-sec{
+    font-size:.64rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--faint); padding:.9rem .65rem .25rem; display:flex; align-items:center;
+  }
+  .side-sec .pinadd{
+    margin-left:auto; background:none; border:1px solid var(--line); color:var(--faint);
+    font:inherit; font-size:.8rem; line-height:1; border-radius:7px; padding:.1rem .45rem; cursor:pointer;
+  }
+  .side-sec .pinadd:hover{color:var(--accent); border-color:var(--accent-dim)}
+  .dot2{width:8px; height:8px; border-radius:50%; flex:none; background:var(--faint)}
+  .navitem.t-urgent .dot2{background:var(--warn)}
+  .navitem.t-home .dot2{background:#7fb88a}
+  .navitem.t-phone .dot2{background:#7fb4c8}
+  .navitem.t-call .dot2{background:#b7a0dc}
+  .side-foot{margin-top:auto; padding:.8rem .65rem .2rem; font-size:.68rem; color:var(--faint)}
+  #sideScrim{display:none}
+
+  .main{
+    min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.8rem;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent; padding-right:.2rem;
+  }
+  .main::-webkit-scrollbar, .side::-webkit-scrollbar, .rail::-webkit-scrollbar{width:8px}
+  .main::-webkit-scrollbar-thumb, .side::-webkit-scrollbar-thumb, .rail::-webkit-scrollbar-thumb{
+    background:var(--line); border-radius:4px}
+  .rail{
+    min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.8rem;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent; padding-right:.2rem;
+  }
+
+  .dayhead{display:flex; align-items:baseline; gap:.7rem; padding:.1rem .2rem 0}
+  .dayhead h1{margin:0; font-size:1.5rem; font-weight:700; letter-spacing:-.02em}
+  .dayhead .daysub{color:var(--faint); font-size:.8rem}
+  .dayhead .ghost{margin-left:auto}
+  .daysum{display:flex; align-items:center; gap:.6rem; padding:.05rem .2rem .2rem;
+          font-size:.78rem; color:var(--muted)}
+  .prog{display:flex; gap:4px; margin-left:auto}
+  .prog i{width:14px; height:6px; border-radius:3px; border:1px solid var(--ok); display:block}
+  .prog i.f{background:var(--ok)}
 
   .card{background:var(--surface); border:1px solid var(--line); border-radius:14px;
         padding:.6rem .8rem .7rem}
@@ -82,6 +159,24 @@
                 letter-spacing:0; color:var(--faint); font-weight:500; text-transform:none}
   .card-head .path{font-family:var(--mono); font-size:.62rem; letter-spacing:0;
                    text-transform:none; color:var(--faint); font-weight:400}
+  .rail-head{
+    display:flex; align-items:baseline; gap:.5rem; padding:.15rem 0 .45rem;
+    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--muted);
+  }
+  .rail-head .rail-side{margin-left:auto; font-family:var(--mono); font-size:.66rem;
+                        letter-spacing:0; text-transform:none; color:var(--muted); font-weight:500}
+
+  /* the dashed planning line + its green pull pill */
+  .capline{display:flex; align-items:center; gap:.7rem; margin:.55rem 0 .2rem}
+  .capline .rule{flex:1; border-top:1px dashed var(--accent-dim)}
+  .capline-t{font-size:.72rem; color:var(--accent); text-align:center}
+  .pullbtn{
+    background:none; border:1px solid var(--ok); color:var(--ok); font:inherit;
+    font-size:.76rem; font-weight:600; padding:.3rem .75rem; border-radius:9px; cursor:pointer;
+  }
+  .pullbtn:hover{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .pullbtn:disabled{opacity:.45; cursor:default}
 
   /* ── day blocks ───────────────────────── */
   .blk{border:1px dashed var(--line); border-radius:11px; padding:.3rem .6rem .5rem; margin-bottom:.55rem}
@@ -102,13 +197,8 @@
   /* ── a draggable line ─────────────────── */
   .lane{min-height:34px; border-radius:8px; padding:1px 0}
   .lane.mini{min-height:26px}
-  /* While a drag is live, every lane shows its own edge and the one under
-     the pointer lights up. A drop should never be a guess about which of
-     twenty small targets is going to catch it. */
   body.dragging .lane{outline:1px dashed var(--line); outline-offset:1px}
   body.dragging .lane.over{outline:1.5px solid var(--accent); background:rgba(227,168,87,.07)}
-  /* The strip grows while a drag is live: the day card shrinks as the row
-     leaves it, so a fixed-size target slides out from under the pointer. */
   body.dragging .trash{border-color:var(--warn); color:var(--warn); min-height:54px;
                        display:flex; align-items:center; justify-content:center}
   body.dragging .trash.over{outline-color:var(--warn); background:rgba(217,138,106,.08)}
@@ -124,7 +214,7 @@
     border-radius:8px; cursor:grab; background:var(--surface);
     border:1px solid transparent; user-select:none; -webkit-user-select:none;
   }
-  .col .card .row:hover{border-color:var(--line); background:var(--surface-2)}
+  .main .card .row:hover, .rail .card .row:hover{border-color:var(--line); background:var(--surface-2)}
   .row.dragging{opacity:.4}
   .row.ghost-row{background:var(--surface-2); border:1px dashed var(--accent-dim)}
   .row .cb{
@@ -139,11 +229,13 @@
   .row .tx[contenteditable="true"]{outline:none; border-bottom:1px solid var(--accent-dim)}
   .row.plain .cb{display:none}
   .row.plain .tx{color:var(--muted)}
+  .row.static{cursor:default}
   .badge{display:inline-block; font-family:var(--mono); font-size:.6rem; color:var(--accent-dim);
          border:1px solid var(--line); border-radius:5px; padding:0 .28rem; margin-left:.4rem;
          vertical-align:1px}
   .badge.proj{color:var(--accent); border-color:var(--accent-dim)}
   .badge.route{color:var(--faint)}
+  .badge.src{margin-left:auto; color:var(--faint)}
   .rowacts{display:flex; gap:.15rem; flex:none; opacity:0; transition:opacity .12s}
   .row:hover .rowacts{opacity:1}
   .rowacts button{background:none; border:none; color:var(--faint); cursor:pointer;
@@ -153,6 +245,11 @@
   .rowacts button.x:hover{color:var(--warn)}
   .row.gone .tx{color:var(--faint); text-decoration:line-through}
   .row:focus-visible{outline:2px solid var(--accent-dim); outline-offset:-2px}
+  .row.dim{opacity:.28}
+  .badge.tg{border-radius:6px; margin-left:.4rem; color:var(--tc,var(--faint)); border-color:transparent;
+    background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
+  .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
+  .t-call{--tc:#b7a0dc}
   .trash.hot{border-color:var(--warn); color:var(--warn)}
 
   /* ── group headings inside a card ─────── */
@@ -177,11 +274,10 @@
     border:1px dashed var(--line); border-radius:11px; color:var(--faint);
     font-size:.74rem; text-align:center; padding:.5rem; min-height:38px;
   }
-  .trash.hot{border-color:var(--warn); color:var(--warn)}
 
   /* ── toast + sheet ────────────────────── */
   .toast{
-    position:fixed; left:50%; transform:translateX(-50%); bottom:1.2rem;
+    position:fixed; left:50%; transform:translateX(-50%); bottom:4.4rem;
     background:var(--surface-2); border:1px solid var(--line); color:var(--ink);
     font-size:.82rem; padding:.55rem .95rem; border-radius:10px; z-index:30;
     opacity:0; transition:opacity .2s; pointer-events:none; max-width:70vw;
@@ -217,44 +313,63 @@
            color:var(--warn); font-size:.76rem; padding:.45rem .7rem; margin-bottom:.2rem}
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
 
-  /* tags, collapsing blocks, focus */
-  .tagbar{display:flex; gap:.3rem; align-items:center; flex-wrap:wrap}
-  .chip{font:inherit; font-size:.72rem; padding:.12rem .55rem; border:1px solid var(--line);
-    border-radius:99px; background:none; color:var(--faint); cursor:pointer}
-  .chip.on{background:var(--accent); color:#1a1206; border-color:var(--accent)}
-  .badge.tg{border-radius:6px; margin-left:.4rem; color:var(--tc,var(--faint)); border-color:transparent;
-    background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
-  .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
-  .t-call{--tc:#b7a0dc}
-  .row.dim{opacity:.28}
+  /* collapsing blocks */
   .blk-head{cursor:pointer; user-select:none}
   .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
   .blk.collapsed .blk-head .chev{transform:rotate(-90deg)}
   .blk.collapsed .lane, .blk.collapsed .adder, .blk.collapsed .evt{display:none}
 
-  /* ── phone ───────────────────────────── */
-  .mtabs, .mvscrim, .mv{display:none}
+  /* ── floating save bar ────────────────── */
+  .savebar{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:1.1rem; z-index:28;
+    display:flex; align-items:center; gap:.7rem; background:var(--bg-2);
+    border:1px solid var(--accent-dim); border-radius:14px; padding:.55rem .8rem;
+    box-shadow:0 12px 30px rgba(0,0,0,.45);
+  }
+  .savebar span{font-size:.78rem; color:var(--muted)}
+
+  /* ── phone move sheet ─────────────────── */
+  .mvscrim, .mv{display:none}
   .rowacts .mvb{display:none}
   @media (hover:none){
     .rowacts{opacity:1}
-    .row{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation}
+    .row:not(.static){-webkit-touch-callout:none; touch-action:manipulation}
     .row [contenteditable]{-webkit-user-select:text; user-select:text}
   }
+
+  /* ── narrow: rail stacks under the day ── */
+  @media (max-width:1080px){
+    body{overflow:visible; min-height:100dvh}
+    .shell{display:block; overflow:visible; padding:.8rem}
+    .main, .side, .rail{overflow:visible}
+    .rail{margin-top:1rem; max-width:560px}
+  }
+
+  /* ── phone ───────────────────────────── */
   @media (max-width:860px){
-    body{display:block; overflow:visible; min-height:100dvh;
-         padding-bottom:calc(4.2rem + env(safe-area-inset-bottom,0px))}
-    header{position:sticky; top:0; z-index:20; background:var(--bg); flex-wrap:wrap; gap:.4rem .6rem;
-           padding:calc(.5rem + env(safe-area-inset-top,0px)) .8rem .5rem}
-    .nav{margin-left:0; order:2}
+    body{padding-bottom:calc(5.6rem + env(safe-area-inset-bottom,0px))}
+    header{position:sticky; top:0; z-index:20; background:var(--bg); flex-wrap:wrap;
+           gap:.4rem .6rem; padding:calc(.5rem + env(safe-area-inset-top,0px)) .8rem .5rem}
+    .iconbtn{display:inline-block; order:1}
+    .mark{order:2}
+    .hdr-right{order:3; margin-left:auto; gap:.35rem}
+    .omni{order:4; flex:1 0 100%; max-width:none}
+    .nav{order:5}
+    .ctx, .status-txt{display:none}
+    #deferBtn{display:none}
     .day-label{min-width:7rem}
-    .hdr-right{order:1; margin-left:auto; gap:.35rem}
-    .ctx, .status-txt, #routeBtn{display:none}
-    .tagbar{order:3; flex:1 0 100%; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:.1rem}
-    .tagbar .chip{flex:none; min-height:32px; padding:.2rem .7rem; font-size:.78rem}
-    .board{display:block; overflow:visible; padding:.7rem .8rem}
-    .col{overflow:visible; padding-right:0}
-    body[data-view="day"] #colSrc, body[data-view="src"] #colDay{display:none}
-    .ghost, .nav button{min-height:36px; min-width:36px}
+    .ghost, .nav button, .iconbtn{min-height:36px; min-width:36px}
+    .side{
+      position:fixed; top:0; bottom:0; left:0; width:min(78vw,290px); z-index:42;
+      background:var(--bg-2); border-right:1px solid var(--line); padding:.9rem .6rem;
+      transform:translateX(-105%); transition:transform .22s;
+    }
+    .side.open{transform:none}
+    #sideScrim{display:block; position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:41;
+               opacity:0; pointer-events:none; transition:opacity .2s}
+    #sideScrim.open{opacity:1; pointer-events:auto}
+    .side-foot{margin-top:auto}
+    .savebar{bottom:calc(.9rem + env(safe-area-inset-bottom,0px)); max-width:94vw}
     .row{min-height:44px; padding:.3rem .4rem}
     .rowacts{gap:.1rem}
     .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
@@ -263,11 +378,7 @@
     .blk-head{min-height:44px}
     input, textarea, [contenteditable]{font-size:16px}
     .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
-    .toast{bottom:calc(4.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
-    .mtabs{display:flex; position:fixed; left:0; right:0; bottom:0; z-index:25; background:var(--bg);
-           border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
-    .mtabs button{flex:1; min-height:52px; background:none; border:0; color:var(--faint); font:inherit; font-size:.88rem}
-    .mtabs button.on{color:var(--ink); font-weight:700; box-shadow:inset 0 2px 0 var(--accent)}
+    .toast{bottom:calc(5.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
     .mvscrim{display:block; position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:40;
              opacity:0; pointer-events:none; transition:opacity .2s}
     .mvscrim.open{opacity:1; pointer-events:auto}
@@ -282,42 +393,59 @@
     .mv button:active{background:var(--surface-2)}
     .mv .danger{color:var(--warn)} .mv .cancel{color:var(--faint)}
   }
-  .ghost.save{background:var(--accent); color:#1a1206; border-color:var(--accent); font-weight:600}
 </style>
 </head>
 <body>
   <header>
+    <button class="iconbtn" id="menuBtn" aria-label="Views">☰</button>
     <span class="mark">board</span>
+    <div class="omni">
+      <input id="omni" placeholder="Capture a task, or search… try #call" autocomplete="off" />
+      <kbd>⌘K</kbd>
+      <div class="omnidrop" id="omniDrop" hidden></div>
+    </div>
     <div class="nav">
       <button id="prevDay" aria-label="Previous day">‹</button>
       <span class="day-label" id="dayLabel">—</span>
       <button id="nextDay" aria-label="Next day">›</button>
       <button id="todayBtn">today</button>
     </div>
-    <div class="ctx" id="ctx"></div>
-    <div class="tagbar" id="tagbar"></div>
     <div class="hdr-right">
-      <button class="ghost" id="routeBtn" title="Shade each task by where /defer would send it tomorrow">defer view</button>
-      <button class="ghost" id="buildBtn" hidden>build the day</button>
-      <button class="ghost" id="moreBtn" hidden title="Finished everything? Pull the next batch from your sources">more</button>
-      <button class="ghost" id="roughBtn" title="Rough night: keep the first 3 tasks today, send the rest back where they came from">rough night</button>
-      <button class="ghost save" id="batchBtn" hidden>save (0)</button>
-      <button class="ghost" id="refreshBtn" title="Save and reload">↻</button>
       <span class="dot" id="dot"></span>
       <span class="status-txt" id="statusTxt">—</span>
+      <button class="ghost" id="refreshBtn" title="Save and reload">↻</button>
+      <button class="ghost" id="roughBtn" title="Rough night: keep the first 3 tasks today, send the rest back where they came from">rough night</button>
       <button class="ghost" id="gearBtn" aria-label="Settings">⚙</button>
     </div>
   </header>
 
-  <div class="board">
-    <div class="col" id="colDay"></div>
-    <div class="col" id="colSrc"></div>
+  <div class="shell">
+    <div id="sideScrim"></div>
+    <nav class="side" id="side" aria-label="Views">
+      <button class="navitem" data-nav="today"><span>Today</span><span class="n"></span></button>
+      <button class="navitem" data-nav="inbox"><span>Inbox</span><span class="n"></span></button>
+      <button class="navitem" data-nav="priorities"><span>Priorities</span><span class="n"></span></button>
+      <button class="navitem" data-nav="future"><span>Future days</span><span class="n"></span></button>
+      <button class="navitem" data-nav="stalled"><span>Stalled</span><span class="n"></span></button>
+      <button class="navitem" data-nav="aar"><span>Review</span><span class="n"></span></button>
+      <div class="side-sec">tags</div>
+      <div id="tagNav"></div>
+      <div class="side-sec">lists <button class="pinadd" id="pinAddBtn" title="Pin a new list">+</button></div>
+      <div id="listNav"></div>
+      <div class="side-foot" id="sideFoot">—</div>
+    </nav>
+    <main class="main" id="main"></main>
+    <aside class="rail" id="rail" aria-label="Context">
+      <div id="railInner"></div>
+    </aside>
   </div>
 
-  <nav class="mtabs" id="mtabs" aria-label="View">
-    <button data-v="day" class="on">Today</button>
-    <button data-v="src">Sources</button>
-  </nav>
+  <div class="savebar" id="savebar" hidden>
+    <span id="unsavedTxt">0 unsaved</span>
+    <button class="ghost" id="discardBtn">discard</button>
+    <button class="ghost save" id="batchBtn">save</button>
+  </div>
+
   <div class="mvscrim" id="mvScrim"></div>
   <div class="mv" id="mvSheet" role="dialog" aria-label="Move task"></div>
 
@@ -366,6 +494,8 @@
   let viewDate = null;       // YYYY-MM-DD being planned
   let routeView = false;     // shade by where /defer would send each task
   let busy = false;          // one write in flight at a time
+  let nav = "today";         // which center view the sidebar points at
+  let listNav = null;        // pinned-note path when nav === "list"
   const collapsed = new Set(LS.get("board.collapsed", []));
   // Tags: plain inline #tokens in a fixed vocabulary; they stay in the task
   // text (the backend strips them only for identity), so a rename keeps them.
@@ -404,9 +534,9 @@
     return rawFetch(path, o);
   }
   function updateBatchUI(){
-    const b = $("batchBtn"); if(!b) return;
-    b.hidden = !queue.length;
-    b.textContent = "save ("+queue.length+")";
+    const bar = $("savebar"); if(!bar) return;
+    bar.hidden = !queue.length;
+    $("unsavedTxt").textContent = queue.length+" unsaved change"+(queue.length===1?"":"s");
     if(queue.length) setConn("online", queue.length+" unsaved");
   }
   // true = saved (or nothing to save), false = server rejected the batch
@@ -433,11 +563,18 @@
       return null;
     }
   }
+  function discard(){
+    if(!queue.length) return;
+    queue = []; updateBatchUI();
+    toast("changes discarded");
+    refresh();
+  }
   addEventListener("beforeunload", e=>{ if(queue.length){ e.preventDefault(); e.returnValue=""; } });
   function setConn(state, note){
     $("dot").className = "dot"+(state?" "+state:"");
     $("statusTxt").textContent = note || (queue.length ? queue.length+" unsaved"
       : state==="online"?"synced":state==="offline"?"offline":"—");
+    updateFoot();
   }
 
   // ── dates ──────────────────────────────
@@ -506,6 +643,7 @@
     }
     if(routeView && opts.route && ROUTE_LABEL[opts.route])
       tx.append(el("span","badge route", ROUTE_LABEL[opts.route]));
+    if(opts.src) tx.append(el("span","badge src", opts.src));
     const acts = el("div","rowacts");
     const ed = el("button",null,"✎"); ed.title="Edit"; ed.addEventListener("click", ()=>edit(r, tx, item, addr));
     const sc = el("button",null,"◷"); sc.title="Schedule for a date";
@@ -541,6 +679,35 @@
     return r;
   }
 
+  /** A checkable row of a pinned list. Lists are not /move panes, so this
+   *  is deliberately simpler than a task row: no drag, no acts — just the
+   *  toggle, which writes through /pin/toggle. */
+  function listRow(item, path){
+    const r = el("div","row static"+(item.checked?" done":"")+(item.box?"":" plain"));
+    const cb = el("span","cb"); cb.innerHTML = CHECK;
+    cb.addEventListener("click", async e=>{
+      e.stopPropagation();
+      const want = !item.checked;
+      r.classList.add("pending"); r.classList.toggle("done", want);
+      try{
+        const res = await rawFetch("/pin/toggle", {method:"POST",
+          body:JSON.stringify({path:path, text:item.raw||item.text, checked:want})});
+        if(!res.ok) throw new Error("HTTP "+res.status);
+        item.checked = want;
+        r.classList.remove("pending");
+        setConn("online");
+        renderSide(); renderRail();
+      }catch(err){
+        r.classList.toggle("done", item.checked);
+        r.classList.remove("pending");
+        toastBad("couldn't update");
+      }
+    });
+    const tx = el("span","tx", item.text);
+    r.append(cb, tx);
+    return r;
+  }
+
   /** A drop zone. Every lane declares the address a line dropped into it
    *  should take; that is the whole protocol between the UI and /move. */
   function lane(addr, opts){
@@ -562,54 +729,643 @@
     return g;
   }
 
-  // ── render: the day ────────────────────
+  // ── counts (sidebar numbers, computed from DATA, not the DOM — only one
+  // view is on screen at a time, so the DOM can't be the source) ──
+  function openIn(ns){
+    let o=0;
+    (function w(x){ for(const n of x||[]){ if(n.box && !n.checked) o++; w(n.children); } })(ns);
+    return o;
+  }
+  function navCounts(){
+    return {
+      today: data.day.exists ? openIn(data.day.tasks) : 0,
+      inbox: (data.inbox||[]).length,
+      priorities: (data.priorities.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
+                  + (data.priorities.tasks||[]).length,
+      future: (data.future||[]).reduce((a,d)=>a+d.tasks.length,0),
+      stalled: (data.stalled.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
+               + (data.stalled.ideas||[]).length,
+      aar: (data.aar.categories||[]).reduce((a,c)=>a+c.items.length,0),
+    };
+  }
+  // the "waiting" number: everything unplanned that today could pull from
+  function waitingCount(){
+    return navCounts().inbox + navCounts().priorities + navCounts().future;
+  }
+  function tagCounts(){
+    const c={}; TAGS.forEach(t=>c[t]=0);
+    const bump=s=>{ for(const t of tagsOf(s||"")) if(t in c) c[t]++; };
+    (function w(ns){ for(const n of ns||[]){ bump(n.text); w(n.children); } })(data.day.tasks||[]);
+    for(const t of data.inbox) bump(t.text);
+    for(const d of data.future||[]) for(const t of d.tasks) bump(t.text);
+    for(const src of ["priorities","stalled"]){
+      for(const p of data[src].projects||[]){ bump(p.display); for(const t of p.tasks) bump(t.text); }
+      for(const t of data[src].tasks||[]) bump(t.text);
+      for(const s of data[src].ideas||[]) bump(s.text);
+    }
+    return c;
+  }
+
+  // ── sidebar ────────────────────────────
+  function renderSide(){
+    const c = navCounts();
+    for(const k of ["today","inbox","priorities","future","stalled","aar"]){
+      const n = document.querySelector('.navitem[data-nav="'+k+'"] .n');
+      if(n) n.textContent = String(c[k]);
+    }
+    document.querySelectorAll(".navitem[data-nav]").forEach(b=>
+      b.classList.toggle("on", b.dataset.nav===nav && nav!=="list"));
+    const tn = $("tagNav"); tn.innerHTML="";
+    const tc = tagCounts();
+    TAGS.forEach(t=>{
+      const b = el("button","navitem t-"+t);
+      b.append(el("span","dot2"), el("span",null,"#"+t), el("span","n",String(tc[t]||"")));
+      b.classList.toggle("on", tagFilter===t);
+      b.addEventListener("click", ()=>{ tagFilter = tagFilter===t?"":t; render(); });
+      tn.append(b);
+    });
+    const ln = $("listNav"); ln.innerHTML="";
+    for(const L of (data.lists||[])){
+      const b = el("button","navitem");
+      b.append(el("span",null,L.title||L.path),
+               el("span","n",String(L.items.filter(i=>i.box&&!i.checked).length)));
+      b.classList.toggle("on", nav==="list" && listNav===L.path);
+      b.addEventListener("click", ()=>go("list", L.path));
+      ln.append(b);
+    }
+    if(!((data.lists||[]).length))
+      ln.append(el("div","empty","pin a note to see it here"));
+  }
+  function go(which, listPath){
+    nav = which; if(listPath!=null) listNav = listPath;
+    closeDrawer(); render();
+  }
+  function closeDrawer(){
+    $("side").classList.remove("open"); $("sideScrim").classList.remove("open");
+  }
+
+  // ── render ─────────────────────────────
   function render(){
     if(!data) return;
     $("dayLabel").innerHTML = "";
     $("dayLabel").append(el("span",null,fmtD(viewDate)), el("span","rel",relD(viewDate)));
-    $("buildBtn").hidden = data.day.exists || viewDate !== data.today;
-    $("roughBtn").hidden = !data.day.exists || viewDate !== data.today;
-    // "more" shows only for TODAY, when the day is built and nothing is left
-    // open — the moment a top-up makes sense.
-    let open = 0;
-    (function countOpen(ns){ for(const n of ns||[]){ if(n.box && !n.checked) open++; countOpen(n.children); } })
-      (data.day.tasks||[]);
-    $("moreBtn").hidden = !data.day.exists || viewDate !== data.today || open > 0;
-    if(data.day.cap) $("dayLabel").append(el("span","rel","cap "+data.day.cap));
-    $("routeBtn").classList.toggle("on", routeView);
-    renderDay();
-    renderSources();
-    wire();
-    tagbar();
+    renderSide();
+    renderCenter();
+    renderRail();
+    updateFoot();
   }
 
-  // ── tags: filter chips ──
-  function tagbar(){
-    const host = $("tagbar"); if(!host) return;
-    const rows = [...document.querySelectorAll(".row:not(.done)")];
-    host.innerHTML = "";
-    const chip = (label, val, n, cls)=>{
-      const b = el("button","chip"+(tagFilter===val?" on":"")+(cls?" "+cls:""),
-                   label+(n!=null?" "+n:""));
-      b.addEventListener("click", ()=>{ tagFilter = tagFilter===val?"":val; tagbar(); });
-      host.append(b);
-    };
-    chip("all","",null);
-    TAGS.forEach(t=>chip("#"+t, t, rows.filter(r=>(r.dataset.tags||"").split(" ").includes(t)).length, "t-"+t));
-    document.querySelectorAll(".row").forEach(r=>
+  function renderCenter(){
+    const host = $("main"); host.innerHTML = "";
+    if(nav==="today") renderDay(host);
+    else if(nav==="list") renderListView(host);
+    else renderSourceView(host);
+    applyDim();
+    wire(host);
+  }
+
+  function applyDim(){
+    document.querySelectorAll(".main .row:not(.static)").forEach(r=>
       r.classList.toggle("dim", !!tagFilter && !(r.dataset.tags||"").split(" ").includes(tagFilter)));
   }
 
-  // ── phone: view switch + "move to" sheet ──
-  // Dragging between the two columns needs both on screen, which a phone
-  // can't do, so every open row has a ⋯ that moves it without dragging.
-  document.body.dataset.view = "day";
-  $("mtabs").addEventListener("click", e=>{
-    const b = e.target.closest("button"); if(!b) return;
-    document.body.dataset.view = b.dataset.v;
-    $("mtabs").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
-    window.scrollTo(0,0);
-  });
+  // ── render: the day ────────────────────
+  function renderDay(host){
+    const card = el("div","card day");
+
+    const head = el("div","dayhead");
+    head.append(el("h1",null, viewDate===data.today ? "Today" : fmtD(viewDate)));
+    if(viewDate!==data.today) head.append(el("span","daysub",relD(viewDate)));
+    if(!data.day.exists && viewDate===data.today){
+      const bb = el("button","ghost","build the day"); bb.id="buildBtn";
+      bb.addEventListener("click",buildDay);
+      head.append(bb);
+    }
+    const dv = el("button","ghost","defer view"); dv.id="deferBtn";
+    dv.classList.toggle("on", routeView);
+    dv.title = "Shade each task by where /defer would send it tomorrow";
+    dv.addEventListener("click",()=>{ routeView=!routeView; render(); });
+    head.append(dv);
+    card.append(head);
+
+    // summary: planned counts + progress dots
+    let done=0, open=0;
+    (function w(ns){ for(const n of ns||[]){
+      if(n.box){ n.checked? done++ : open++; } w(n.children); } })(data.day.tasks||[]);
+    const sum = el("div","daysum");
+    sum.append(el("span",null, data.day.exists
+      ? done+" of "+(done+open)+" done · "+waitingCount()+" waiting"
+      : "not built yet"));
+    if(data.day.exists && done+open){
+      const pr = el("div","prog");
+      for(let i=0;i<Math.min(done+open,10);i++) pr.append(el("i", i<done?"f":null));
+      sum.append(pr);
+    }
+    card.append(sum);
+
+    const head2 = el("div","card-head");
+    head2.append(el("span",null,"the plan"), el("span","path", data.day.path||""));
+    card.append(head2);
+
+    if(!data.day.exists){
+      card.append(el("div","empty",
+        viewDate===data.today ? "The 8am run builds this, or build it now."
+                              : "Nothing planned for this day yet. Drop anything here to start it."));
+    }
+
+    // group the day's tasks by block hint, in schedule order. Blocks,
+    // capacities and events all come from /board, computed with the same
+    // helpers /daily budgets with — so "over capacity" here means exactly
+    // what the scheduler means by full.
+    const blocks = data.blocks || [];
+    const names = blocks.map(b=>b.name);
+    const byBlock = new Map(names.map(n=>[n,[]]));
+    const loose = [];
+    const sections = taskIndex();
+    const flat = [];
+    (function walk(nodes, project){
+      for(const n of nodes||[]){
+        if(n.box) flat.push({node:n, project:project});
+        walk(n.children, n.box? project : n.text);
+      }
+    })(data.day.tasks||[], null);
+    for(const f of flat){
+      const b = f.node.block;
+      (b && byBlock.has(b) ? byBlock.get(b) : loose).push(f);
+    }
+
+    const evs = data.events || [];
+    for(const ev of evs) if(ev.all_day){
+      const e = el("div","evt");
+      e.append(el("span","when","all day"), el("span",null,ev.title));
+      card.append(e);
+    }
+    for(const b of blocks){
+      const name = b.name;
+      const items = byBlock.get(name)||[];
+      const openc = items.filter(f=>!f.node.checked).length;
+      const cap = b.capacity;
+      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&openc>cap?" over":""));
+      const bh = el("div","blk-head");
+      bh.append(el("span","chev","▾"), el("span",null,name.toLowerCase()));
+      if(b.label) bh.append(el("span","span", b.label));
+      const capEl = el("span","cap", openc? openc+" open" : (items.length?"done ✓":""));
+      if(cap) capEl.title = "soft cap "+cap+" (less events in this block)";
+      capEl.id = "cap-"+name;
+      bh.append(capEl);
+      wrap.append(bh);
+      const bk = viewDate+"|"+name;
+      const fold = bk in blkState ? !blkState[bk]
+                                  : (items.length>0 && openc===0);
+      wrap.classList.toggle("collapsed", fold);
+      bh.addEventListener("click", ()=>{
+        blkState[bk] = wrap.classList.toggle("collapsed") ? false : true;
+      });
+      for(const ev of evs) if(inBlock(ev,b)){
+        const e = el("div","evt");
+        e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
+        wrap.append(e);
+      }
+      const l = lane({pane:"day", date:viewDate, block:name});
+      for(const f of items)
+        l.append(row(nodeItem(f), {pane:"day", date:viewDate, block:name},
+                     {tickable:true, route:sections[norm(f.node.text)]}));
+      wrap.append(l);
+      const add = el("input","adder");
+      add.placeholder = "add to "+name.toLowerCase()+"…";
+      add.addEventListener("keydown", e=>{
+        if(e.key!=="Enter" || !add.value.trim()) return;
+        const v = add.value.trim(); add.value="";
+        move(v, {pane:"inbox"}, {pane:"day", date:viewDate, block:name});
+      });
+      wrap.append(add);
+      card.append(wrap);
+    }
+    if(loose.length){
+      const wrap = el("div","blk");
+      wrap.append(el("div","blk-head","anytime"));
+      const l = lane({pane:"day", date:viewDate});
+      for(const f of loose)
+        l.append(row(nodeItem(f), {pane:"day", date:viewDate},
+                     {tickable:true, route:sections[norm(f.node.text)]}));
+      wrap.append(l);
+      card.append(wrap);
+    }
+
+    // finished work folds away; a click reopens it
+    if(done){
+      const dk = "done:"+viewDate;
+      const isOpen = collapsed.has(dk);
+      const g = el("div","grp");
+      g.append(el("span","chev", isOpen?"▾":"▸"), el("span",null,"done today"), el("span","n",String(done)));
+      g.addEventListener("click", ()=>{
+        collapsed.has(dk)? collapsed.delete(dk) : collapsed.add(dk);
+        LS.set("board.collapsed",[...collapsed]); render();
+      });
+      card.append(g);
+      if(isOpen){
+        const l = lane({pane:"day", date:viewDate});
+        for(const f of flat) if(f.node.checked)
+          l.append(row(nodeItem(f), {pane:"day", date:viewDate}, {}));
+        card.append(l);
+      }
+    }
+
+    // the planning line: the cap, and the pull-more pill. Visible for any
+    // built today — topping up mid-day is allowed, not just at zero.
+    if(data.day.exists && viewDate===data.today){
+      const line = el("div","capline");
+      line.append(el("span","rule"));
+      line.append(el("span","capline-t",
+        "Today's cap is "+(data.day.cap||"—")+". Drag a task above the line to plan it"));
+      const pm = el("button","pullbtn","Pull 3 more"); pm.id="pullBtn";
+      pm.addEventListener("click",doMore);
+      line.append(pm);
+      line.append(el("span","rule"));
+      card.append(line);
+    }
+    host.append(card);
+
+    // what is waiting to be planned: the drag source for the line above
+    if(viewDate===data.today) host.append(renderWaiting());
+
+    // The strip is NOT a Sortable list, and that is the whole point. It is
+    // an always-empty, full-width target, and Sortable's empty-list
+    // detection would let it claim drops aimed at small lanes on the other
+    // side of the screen. It is hit-tested against the pointer at release
+    // instead, so it can only catch what is actually over it.
+    const t = el("div","trash","drag here to delete");
+    t.id = "trash";
+    host.append(t);
+  }
+
+  function renderWaiting(){
+    const card = el("div","card");
+    const wh = el("div","card-head");
+    wh.append(el("span",null,"waiting"), el("span","n",String(waitingCount())));
+    card.append(wh);
+    if((data.missing||[]).length)
+      card.append(el("div","warnbar",
+        "not found in the vault: "+data.missing.join(", ")+" — set its path in the service env"));
+    for(const d of collisions())
+      card.append(el("div","warnbar",
+        "“"+d.text+"” is live in both "+d.a+" and "+d.b
+        +" — they are one task to /check, so ticking one may flip the other"));
+
+    // priorities: projects first, then loose tasks
+    const pc = navCounts().priorities;
+    const pk = "w:priorities";
+    card.append(group("priorities", null, pc, pk));
+    const pl = lane({pane:"priorities"}, {mini:true});
+    if(!collapsed.has(pk)){
+      for(const p of data.priorities.projects||[])
+        for(const t of p.tasks)
+          pl.append(row(t, {pane:"priorities", project:p.body}, {src:"priorities"}));
+      for(const t of data.priorities.tasks||[])
+        pl.append(row(t, {pane:"priorities"}, {src:"priorities"}));
+    }
+    card.append(pl);
+
+    // future days: dated groups, flattened into one lane per date
+    const fk = "w:future";
+    card.append(group("future days", null, navCounts().future, fk));
+    if(!collapsed.has(fk))
+      for(const d of (data.future||[])){
+        if(!d.tasks.length) continue;
+        const l = lane({pane:"future", date:d.date}, {mini:true});
+        for(const t of d.tasks)
+          l.append(row(t, {pane:"future", date:d.date}, {src:"future · "+fmtD(d.date)}));
+        card.append(l);
+      }
+
+    // inbox
+    const ik = "w:inbox";
+    card.append(group("inbox", null, data.inbox.length, ik));
+    const il = lane({pane:"inbox"}, {mini:true});
+    if(!collapsed.has(ik))
+      for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {src:"inbox"}));
+    if(!data.inbox.length) il.append(el("div","empty","clear"));
+    card.append(il);
+    return card;
+  }
+
+  // ── render: a single source view ───────
+  const NAV_LABEL = { inbox:"Inbox", priorities:"Priorities", future:"Future days",
+                      stalled:"Stalled", aar:"Review" };
+  function renderSourceView(host){
+    const card = el("div","card day");
+    const head = el("div","dayhead");
+    head.append(el("h1",null,NAV_LABEL[nav]||nav));
+    card.append(head);
+    if((data.missing||[]).length)
+      card.append(el("div","warnbar",
+        "not found in the vault: "+data.missing.join(", ")+" — set its path in the service env"));
+
+    if(nav==="future"){
+      const days = upcoming();
+      for(const d of days){
+        const key = "f:"+d.date;
+        const g = group(fmtD(d.date)+(d.overdue?" · overdue":""), "date"+(d.overdue?" overdue":""),
+                        d.tasks.length, key);
+        card.append(g);
+        // The lane is rendered even when the group is collapsed, just empty.
+        // A heading you can see is a heading you can drop on.
+        const l = lane({pane:"future", date:d.date}, {mini:true});
+        if(!collapsed.has(key))
+          for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
+        card.append(l);
+      }
+      host.append(card);
+      return;
+    }
+    if(nav==="inbox"){
+      const ih = el("div","card-head");
+      ih.append(el("span",null,"inbox"), el("span","n", String(data.inbox.length)));
+      card.append(ih);
+      const il = lane({pane:"inbox"});
+      for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {}));
+      if(!data.inbox.length) il.append(el("div","empty","clear — capture with the bar above"));
+      card.append(il);
+      host.append(card);
+      return;
+    }
+    if(nav==="priorities" || nav==="stalled"){
+      host.append(projectCard(NAV_LABEL[nav].toLowerCase(), nav, data[nav]));
+      return;
+    }
+    if(nav==="aar"){
+      const ah = el("div","card-head");
+      ah.append(el("span",null,"append and review"));
+      ah.append(el("span","path", (data.aar.path||"").split("/").pop()));
+      card.append(ah);
+      for(const c of data.aar.categories||[]){
+        const key = "a:"+c.category;
+        const isOpen = c.open ? !collapsed.has(key) : collapsed.has(key);
+        const g = group(c.category, null, c.items.length, key);
+        g.querySelector(".chev").textContent = isOpen? "▾" : "▸";
+        card.append(g);
+        const l = lane({pane:"aar", category:c.category}, {mini:true});
+        if(isOpen)
+          for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
+        card.append(l);
+      }
+      host.append(card);
+      return;
+    }
+  }
+
+  // ── render: a pinned list ──────────────
+  function renderListView(host){
+    const L = (data.lists||[]).find(x=>x.path===listNav);
+    const card = el("div","card day");
+    const head = el("div","dayhead");
+    head.append(el("h1",null, L? (L.title||L.path) : "List"));
+    card.append(head);
+    if(!L){
+      card.append(el("div","empty","this list is no longer pinned"));
+      host.append(card);
+      return;
+    }
+    if(!L.exists){
+      card.append(el("div","empty","not created yet — add something below to start it"));
+    }
+    for(const it of L.items) card.append(listRow(it, L.path));
+    if(L.exists && !L.items.length) card.append(el("div","empty","empty"));
+    const add = el("input","adder");
+    add.placeholder = "add to "+(L.title||"list").toLowerCase()+"…";
+    add.addEventListener("keydown", async e=>{
+      if(e.key!=="Enter" || !add.value.trim()) return;
+      const v = add.value.trim(); add.value="";
+      try{
+        const r = await rawFetch("/pin/append", {method:"POST",
+          body:JSON.stringify({path:L.path, text:v})});
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        setConn("online"); refresh();
+      }catch(err){ toastBad("couldn't add — "+err.message); }
+    });
+    card.append(add);
+    host.append(card);
+  }
+
+  // ── render: the right rail ─────────────
+  function renderRail(){
+    const host = $("railInner"); host.innerHTML = "";
+    const c = data.context;
+
+    const cal = el("div","card");
+    const ch = el("div","rail-head");
+    ch.append(el("span",null,"calendar"));
+    if(c && c.weather && c.weather.summary){
+      const w = c.weather;
+      const hi = w.high!=null ? " "+Math.round(w.high)+"°" : "";
+      ch.append(el("span","rail-side",(w.conditions||"")+hi));
+    }
+    cal.append(ch);
+    if(!c) cal.append(el("div","empty","loading…"));
+    else{
+      const evs = c.events||[];
+      if(!evs.length) cal.append(el("div","empty","no events"));
+      for(const ev of evs){
+        const e = el("div","evt");
+        e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
+        cal.append(e);
+      }
+    }
+    host.append(cal);
+
+    for(const L of (data.lists||[]).slice(0,2)){
+      const lc = el("div","card");
+      const h = el("div","rail-head");
+      h.append(el("span",null,(L.title||"list").toLowerCase()));
+      const ob = el("button","ghost mini","open");
+      ob.addEventListener("click",()=>go("list", L.path));
+      h.append(ob);
+      lc.append(h);
+      if(!L.exists) lc.append(el("div","empty","not created yet"));
+      else if(!L.items.length) lc.append(el("div","empty","empty"));
+      else{
+        for(const it of L.items.slice(0,5)) lc.append(listRow(it, L.path));
+        if(L.items.length>5) lc.append(el("div","empty",(L.items.length-5)+" more — open for all"));
+      }
+      host.append(lc);
+    }
+  }
+
+  function projectCard(title, pane, d){
+    const card = el("div","card");
+    const h = el("div","card-head");
+    h.append(el("span",null,title));
+    h.append(el("span","path",(d.path||"").split("/").pop()));
+    card.append(h);
+    for(const p of d.projects||[]){
+      const key = pane+":"+p.body;
+      const g = group(p.display, null, p.tasks.length, key);
+      card.append(g);
+      const l = lane({pane:pane, project:p.body}, {mini:true});
+      if(!collapsed.has(key)){
+        for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
+        if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+      }
+      card.append(l);
+    }
+    if(d.tasks && d.tasks.length!==undefined){
+      card.append(el("div","sub","tasks"));
+      const l = lane({pane:pane}, {mini:true});
+      for(const t of d.tasks) l.append(row(t, {pane:pane}, {}));
+      card.append(l);
+    }
+    if(d.ideas && d.ideas.length){
+      const key = pane+":ideas";
+      card.append(group("ideas", null, d.ideas.length, key));
+      if(!collapsed.has(key)){
+        const l = lane({pane:pane, ideas:true}, {mini:true});
+        for(const t of d.ideas) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
+        card.append(l);
+      }
+    }
+    return card;
+  }
+
+  function nodeItem(f){
+    return {text:f.node.text, hint:f.node.hint, checked:f.node.checked,
+            project:f.project, raw:f.node.text};
+  }
+  function isNow(b){
+    if(viewDate!==data.today || b.start==null) return false;
+    const d=new Date(), m=d.getHours()*60+d.getMinutes();
+    return m>=b.start && m<b.end;
+  }
+  function inBlock(ev, b){
+    // /board sends event bounds in minutes, so no clock-string parsing.
+    if(b.start==null || ev.start_minutes==null) return false;
+    return ev.start_minutes>=b.start && ev.start_minutes<b.end;
+  }
+
+  function upcoming(){
+    const out = (data.future||[]).filter(d=>d.tasks.length || d.date>=data.today);
+    const have = new Set(out.map(d=>d.date));
+    // always offer the next few days as drop targets, even when empty
+    for(let i=0;i<5;i++){
+      const dt = shiftD(data.today, i);
+      if(!have.has(dt)) out.push({date:dt, overdue:false, tasks:[]});
+    }
+    out.sort((a,b)=>a.date<b.date?-1:1);
+    return out.slice(0,14);
+  }
+
+  // Two open tasks that normalize to the same key are one task as far as
+  // /check and /move are concerned, so ticking one may flip the other.
+  function collisions(){
+    const seen = new Map(), out = [];
+    const add = (t, where)=>{
+      const k = norm(t);
+      if(!k) return;
+      if(seen.has(k)){
+        const first = seen.get(k);
+        if(!out.some(x=>x.key===k)) out.push({key:k, text:t, a:first, b:where});
+      } else seen.set(k, where);
+    };
+    (function walk(ns){
+      for(const n of ns||[]){ if(n.box && !n.checked) add(n.text, "today"); walk(n.children); }
+    })(data.day.tasks||[]);
+    for(const t of data.inbox) add(t.text, "the inbox");
+    for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
+    for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
+      for(const p of src[1].projects||[]) for(const t of p.tasks) add(t.text, src[0]);
+    return out;
+  }
+
+  // ── drag wiring ────────────────────────
+  function wire(root){
+    (root || document).querySelectorAll(".lane").forEach(l=>{
+      Sortable.create(l, {
+        group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
+        emptyInsertThreshold:5, filter:".empty,.adder",
+        delay:180, delayOnTouchOnly:true, touchStartThreshold:8,
+        onStart: ()=>{
+          document.body.classList.add("dragging");
+          PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
+          PTR_EVENTS.forEach(n=>document.addEventListener(n, hoverOpen, true));
+        },
+        onMove: e=>{ markTarget(e.to); },
+        onEnd: e=>{
+          document.body.classList.remove("dragging");
+          PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
+          PTR_EVENTS.forEach(n=>document.removeEventListener(n, hoverOpen, true));
+          clearTimeout(hoverT); hoverB = null;
+          const onTrash = overTrash();
+          markTarget(null);
+          if(onTrash){
+            del(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
+                 e.item.dataset.project || null, e.item);
+            return;
+          }
+          onDrop(e);
+        }
+      });
+    });
+  }
+
+  const PTR_EVENTS = ["pointermove", "mousemove", "dragover", "touchmove"];
+  let ptr = {x:-1, y:-1};
+  function trackPointer(e){
+    const s = (e.touches && e.touches[0]) || e;
+    if(s.clientX == null) return;
+    ptr = {x:s.clientX, y:s.clientY};
+    markTarget(null, true);
+  }
+  function overTrash(){
+    const t = $("trash");
+    if(!t || ptr.x < 0) return false;
+    const b = t.getBoundingClientRect();
+    return ptr.x >= b.left && ptr.x <= b.right && ptr.y >= b.top && ptr.y <= b.bottom;
+  }
+
+  let tagEl = null;
+  function markTarget(l, keep){
+    const t = $("trash");
+    if(t) t.classList.toggle("over", overTrash());
+    if(keep) return;
+    document.querySelectorAll(".lane.over").forEach(x=>x.classList.remove("over"));
+    if(!tagEl){
+      tagEl = el("div","droptag");
+      document.body.append(tagEl);
+    }
+    if(!l){ tagEl.classList.remove("on"); return; }
+    l.classList.add("over");
+    let a = {};
+    try{ a = JSON.parse(l.dataset.addr||"{}"); }catch(err){}
+    tagEl.textContent = laneName(a);
+    const b = l.getBoundingClientRect();
+    tagEl.style.left = Math.round(b.left + 8) + "px";
+    tagEl.style.top = Math.round(b.top + window.scrollY - 22) + "px";
+    tagEl.classList.add("on");
+  }
+  function laneName(a){
+    if(a.pane==="day") return "today" + (a.block? " · "+a.block.toLowerCase() : "");
+    if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
+    if(a.pane==="inbox") return "inbox";
+    if(a.pane==="priorities") return a.project? a.project.replace(/[\[\]]/g,"") : "priorities";
+    if(a.pane==="stalled") return a.project? a.project.replace(/[\[\]]/g,"") : "stalled";
+    if(a.pane==="aar") return "append and review · " + (a.category||"");
+    if(a.pane==="delete") return "delete";
+    if(a.pane) return a.pane;
+    return "";
+  }
+
+  function onDrop(e){
+    const host = e.item.parentElement || e.to;
+    const from = JSON.parse(e.from.dataset.addr||"{}");
+    const to   = JSON.parse((host && host.dataset.addr) || "{}");
+    if(!to.pane) return;
+    const text = e.item.dataset.text;
+    const project = e.item.dataset.project || null;
+    const samePane = e.from === e.to;
+    if(samePane && e.oldIndex === e.newIndex) return;
+    move(text, from, to, project, e.newIndex, null, e.item);
+  }
+
+  // ── phone: "move to" sheet ─────────────
   function closeMove(){ $("mvSheet").classList.remove("open"); $("mvScrim").classList.remove("open"); }
   $("mvScrim").addEventListener("click", closeMove);
   function openMove(r, acts){
@@ -663,399 +1419,6 @@
       .replace(/\s+/g," ").trim().toLowerCase();
   }
 
-  function renderDay(){
-    const host = $("colDay"); host.innerHTML = "";
-    const card = el("div","card day");
-    const head = el("div","card-head");
-    head.append(el("span",null,"today"));
-    head.append(el("span","path", data.day.path||""));
-    card.append(head);
-
-    if(!data.day.exists){
-      const e = el("div","empty",
-        viewDate===data.today ? "No list built yet — the 8am run makes it, or build it now."
-                              : "Nothing planned for this day yet. Drop anything here to start it.");
-      card.append(e);
-    }
-
-    // group the day's tasks by block hint, in schedule order. Blocks,
-    // capacities and events all come from /board, computed with the same
-    // helpers /daily budgets with — so "over capacity" here means exactly
-    // what the scheduler means by full.
-    const blocks = data.blocks || [];
-    const names = blocks.map(b=>b.name);
-    const byBlock = new Map(names.map(n=>[n,[]]));
-    const loose = [];
-    const sections = taskIndex();
-    const flat = [];
-    (function walk(nodes, project){
-      for(const n of nodes||[]){
-        if(n.box) flat.push({node:n, project:project});
-        walk(n.children, n.box? project : n.text);
-      }
-    })(data.day.tasks||[], null);
-    for(const f of flat){
-      const b = f.node.block;
-      (b && byBlock.has(b) ? byBlock.get(b) : loose).push(f);
-    }
-
-    const evs = data.events || [];
-    // All-day events belong to no block, so they sit above them rather
-    // than being silently dropped.
-    for(const ev of evs) if(ev.all_day){
-      const e = el("div","evt");
-      e.append(el("span","when","all day"), el("span",null,ev.title));
-      card.append(e);
-    }
-    for(const b of blocks){
-      const name = b.name;
-      const items = byBlock.get(name)||[];
-      const open = items.filter(f=>!f.node.checked).length;
-      const cap = b.capacity;        // a soft task COUNT now, not minutes
-      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&open>cap?" over":""));
-      const bh = el("div","blk-head");
-      bh.append(el("span","chev","▾"), el("span",null,name.toLowerCase()));
-      if(b.label) bh.append(el("span","span", b.label));
-      const capEl = el("span","cap", open? open+" open" : (items.length?"done ✓":""));
-      if(cap) capEl.title = "soft cap "+cap+" (less events in this block)";
-      capEl.id = "cap-"+name;
-      bh.append(capEl);
-      wrap.append(bh);
-      // Finished blocks fold away by default; a click overrides for the session.
-      const bk = viewDate+"|"+name;
-      const fold = bk in blkState ? !blkState[bk]
-                                  : (items.length>0 && open===0);
-      wrap.classList.toggle("collapsed", fold);
-      bh.addEventListener("click", ()=>{
-        blkState[bk] = wrap.classList.toggle("collapsed") ? false : true;
-      });
-      for(const ev of evs) if(inBlock(ev,b)){
-        const e = el("div","evt");
-        e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
-        wrap.append(e);
-      }
-      const l = lane({pane:"day", date:viewDate, block:name});
-      for(const f of items)
-        l.append(row(nodeItem(f), {pane:"day", date:viewDate, block:name},
-                     {tickable:true, route:sections[norm(f.node.text)]}));
-      wrap.append(l);
-      const add = el("input","adder");
-      add.placeholder = "add to "+name.toLowerCase()+"…";
-      add.addEventListener("keydown", e=>{
-        if(e.key!=="Enter" || !add.value.trim()) return;
-        const v = add.value.trim(); add.value="";
-        // A new task is a move whose source happens to hold nothing: the
-        // destination is written, the source clear finds no match and
-        // no-ops. No second endpoint, no capture round trip.
-        move(v, {pane:"inbox"}, {pane:"day", date:viewDate, block:name});
-      });
-      wrap.append(add);
-      card.append(wrap);
-    }
-    if(loose.length){
-      const wrap = el("div","blk");
-      wrap.append(el("div","blk-head","anytime"));
-      const l = lane({pane:"day", date:viewDate});
-      for(const f of loose)
-        l.append(row(nodeItem(f), {pane:"day", date:viewDate},
-                     {tickable:true, route:sections[norm(f.node.text)]}));
-      wrap.append(l);
-      card.append(wrap);
-    }
-    host.append(card);
-
-    // The strip is NOT a Sortable list, and that is the whole point. It is
-    // an always-empty, full-width target, and Sortable's empty-list
-    // detection would let it claim drops aimed at small lanes on the other
-    // side of the screen — which is how a line dropped on a future date
-    // ended up in the graveyard. It is hit-tested against the pointer at
-    // release instead, so it can only catch what is actually over it.
-    const t = el("div","trash","drag here to delete");
-    t.id = "trash";
-    host.append(t);
-  }
-
-  function nodeItem(f){
-    return {text:f.node.text, hint:f.node.hint, checked:f.node.checked,
-            project:f.project, raw:f.node.text};
-  }
-  function isNow(b){
-    if(viewDate!==data.today || b.start==null) return false;
-    const d=new Date(), m=d.getHours()*60+d.getMinutes();
-    return m>=b.start && m<b.end;
-  }
-  function inBlock(ev, b){
-    // /board sends event bounds in minutes, so no clock-string parsing.
-    if(b.start==null || ev.start_minutes==null) return false;
-    return ev.start_minutes>=b.start && ev.start_minutes<b.end;
-  }
-
-  // ── render: the sources ────────────────
-  function renderSources(){
-    const host = $("colSrc"); host.innerHTML = "";
-    if(data.loading) host.append(el("div","empty","loading sources…"));
-    if((data.missing||[]).length){
-      const w = el("div","warnbar",
-        "not found in the vault: "+data.missing.join(", ")+" — set its path in the service env");
-      host.append(w);
-    }
-    for(const d of collisions()){
-      host.append(el("div","warnbar",
-        "“"+d.text+"” is live in both "+d.a+" and "+d.b
-        +" — they are one task to /check, so ticking one may flip the other"));
-    }
-
-    // future days
-    const fcard = el("div","card");
-    const fh = el("div","card-head");
-    fh.append(el("span",null,"future days"));
-    fcard.append(fh);
-    const days = upcoming();
-    for(const d of days){
-      const key = "f:"+d.date;
-      const g = group(fmtD(d.date)+(d.overdue?" · overdue":""), "date"+(d.overdue?" overdue":""),
-                      d.tasks.length, key);
-      fcard.append(g);
-      // The lane is rendered even when the group is collapsed, just empty.
-      // Skipping it left a heading with no drop target under it, so a drop
-      // aimed at a collapsed date fell through to whatever lane was
-      // nearest — usually the inbox card below. A heading you can see is a
-      // heading you can drop on.
-      const l = lane({pane:"future", date:d.date}, {mini:true});
-      if(!collapsed.has(key))
-        for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
-      fcard.append(l);
-    }
-    host.append(fcard);
-
-    // inbox
-    const icard = el("div","card");
-    const ih = el("div","card-head");
-    ih.append(el("span",null,"inbox"), el("span","n", String(data.inbox.length)));
-    icard.append(ih);
-    const il = lane({pane:"inbox"});
-    for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {}));
-    if(!data.inbox.length) il.append(el("div","empty","clear"));
-    icard.append(il);
-    host.append(icard);
-
-    // top priorities + stalled: same shape, one renderer
-    host.append(projectCard("top priorities", "priorities", data.priorities));
-    host.append(projectCard("stalled / new", "stalled", data.stalled));
-
-    // append and review
-    const acard = el("div","card");
-    const ah = el("div","card-head");
-    ah.append(el("span",null,"append and review"));
-    ah.append(el("span","path", (data.aar.path||"").split("/").pop()));
-    acard.append(ah);
-    for(const c of data.aar.categories){
-      // The three categories you named open by default; the rest start
-      // collapsed. Either way the toggle is remembered, so `collapsed`
-      // holds a deviation from the default rather than an absolute state.
-      const key = "a:"+c.category;
-      const isOpen = c.open ? !collapsed.has(key) : collapsed.has(key);
-      const g = group(c.category, null, c.items.length, key);
-      g.querySelector(".chev").textContent = isOpen? "▾" : "▸";
-      acard.append(g);
-      const l = lane({pane:"aar", category:c.category}, {mini:true});
-      if(isOpen)
-        for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
-      acard.append(l);
-    }
-    host.append(acard);
-
-  }
-
-  function projectCard(title, pane, d){
-    const card = el("div","card");
-    const h = el("div","card-head");
-    h.append(el("span",null,title));
-    h.append(el("span","path",(d.path||"").split("/").pop()));
-    card.append(h);
-    for(const p of d.projects){
-      const key = pane+":"+p.body;
-      const g = group(p.display, null, p.tasks.length, key);
-      card.append(g);
-      const l = lane({pane:pane, project:p.body}, {mini:true});
-      if(!collapsed.has(key)){
-        for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
-        if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
-      }
-      card.append(l);
-    }
-    if(d.tasks && d.tasks.length!==undefined){
-      card.append(el("div","sub","tasks"));
-      const l = lane({pane:pane}, {mini:true});
-      for(const t of d.tasks) l.append(row(t, {pane:pane}, {}));
-      card.append(l);
-    }
-    if(d.ideas && d.ideas.length){
-      const key = pane+":ideas";
-      card.append(group("ideas", null, d.ideas.length, key));
-      if(!collapsed.has(key)){
-        const l = lane({pane:pane, ideas:true}, {mini:true});
-        for(const t of d.ideas) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
-        card.append(l);
-      }
-    }
-    return card;
-  }
-
-  function upcoming(){
-    const out = (data.future||[]).filter(d=>d.tasks.length || d.date>=data.today);
-    const have = new Set(out.map(d=>d.date));
-    // always offer the next few days as drop targets, even when empty
-    for(let i=0;i<5;i++){
-      const dt = shiftD(data.today, i);
-      if(!have.has(dt)) out.push({date:dt, overdue:false, tasks:[]});
-    }
-    out.sort((a,b)=>a.date<b.date?-1:1);
-    return out.slice(0,14);
-  }
-
-  // Two open tasks that normalize to the same key are one task as far as
-  // /check and /move are concerned, so ticking one may flip the other.
-  // Checked ACROSS panes, not just within the day: the same text living in
-  // both the day and its source note means /daily's clear half-failed, and
-  // that is exactly the state the one-live-copy rule exists to catch.
-  function collisions(){
-    const seen = new Map(), out = [];
-    const add = (t, where)=>{
-      const k = norm(t);
-      if(!k) return;
-      if(seen.has(k)){
-        const first = seen.get(k);
-        if(!out.some(x=>x.key===k)) out.push({key:k, text:t, a:first, b:where});
-      } else seen.set(k, where);
-    };
-    (function walk(ns){
-      for(const n of ns||[]){ if(n.box && !n.checked) add(n.text, "today"); walk(n.children); }
-    })(data.day.tasks||[]);
-    for(const t of data.inbox) add(t.text, "the inbox");
-    for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
-    for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
-      for(const p of src[1].projects) for(const t of p.tasks) add(t.text, src[0]);
-    return out;
-  }
-
-  // ── drag wiring ────────────────────────
-  function wire(root){
-    (root || document).querySelectorAll(".lane").forEach(l=>{
-      Sortable.create(l, {
-        group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
-        // 14px was too greedy with lanes stacked this close: a lane could
-        // claim a pointer that was visibly over its neighbour. 5 is
-        // Sortable's own default and matches what the eye expects.
-        emptyInsertThreshold:5, filter:".empty,.adder",
-        delay:180, delayOnTouchOnly:true, touchStartThreshold:8,
-        onStart: ()=>{
-          document.body.classList.add("dragging");
-          PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
-          PTR_EVENTS.forEach(n=>document.addEventListener(n, hoverOpen, true));
-        },
-        // No return value. Returning `true` here approves whatever
-        // candidate target Sortable is considering — including one the
-        // pointer is nowhere near — which is how a drop aimed at a future
-        // date ended up in the graveyard. Undefined leaves the decision
-        // where it belongs, with Sortable's own hit testing.
-        onMove: e=>{ markTarget(e.to); },
-        onEnd: e=>{
-          document.body.classList.remove("dragging");
-          PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
-          PTR_EVENTS.forEach(n=>document.removeEventListener(n, hoverOpen, true));
-          clearTimeout(hoverT); hoverB = null;
-          const onTrash = overTrash();
-          markTarget(null);
-          if(onTrash){
-            // Released over the strip: the row is deleted wherever
-            // Sortable happened to park it.
-            del(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
-                 e.item.dataset.project || null, e.item);
-            return;
-          }
-          onDrop(e);
-        }
-      });
-    });
-  }
-
-  // The pointer is tracked through the drag so the strip can be hit-tested
-  // at release. Sortable does not report it, and the strip is deliberately
-  // not one of its lists.
-  // Several event names on purpose: once a drag is live, pointermove
-  // alone stops arriving here, and touchmove carries its coordinates on
-  // the first touch rather than on the event.
-  const PTR_EVENTS = ["pointermove", "mousemove", "dragover", "touchmove"];
-  let ptr = {x:-1, y:-1};
-  function trackPointer(e){
-    const s = (e.touches && e.touches[0]) || e;
-    if(s.clientX == null) return;
-    ptr = {x:s.clientX, y:s.clientY};
-    markTarget(null, true);
-  }
-  function overTrash(){
-    const t = $("trash");
-    if(!t || ptr.x < 0) return false;
-    const b = t.getBoundingClientRect();
-    return ptr.x >= b.left && ptr.x <= b.right && ptr.y >= b.top && ptr.y <= b.bottom;
-  }
-
-  // Highlights the lane a drop would land in, and floats its name beside
-  // the pointer. Sortable decides the target itself, so reading it back
-  // from `onMove` is the only honest way to show where the line is going.
-  let tagEl = null;
-  function markTarget(l, keep){
-    const t = $("trash");
-    if(t) t.classList.toggle("over", overTrash());
-    if(keep) return;               // pointer tick: only refresh the strip
-    document.querySelectorAll(".lane.over").forEach(x=>x.classList.remove("over"));
-    if(!tagEl){
-      tagEl = el("div","droptag");
-      document.body.append(tagEl);
-    }
-    if(!l){ tagEl.classList.remove("on"); return; }
-    l.classList.add("over");
-    let a = {};
-    try{ a = JSON.parse(l.dataset.addr||"{}"); }catch(err){}
-    tagEl.textContent = laneName(a);
-    const b = l.getBoundingClientRect();
-    tagEl.style.left = Math.round(b.left + 8) + "px";
-    tagEl.style.top = Math.round(b.top + window.scrollY - 22) + "px";
-    tagEl.classList.add("on");
-  }
-  function laneName(a){
-    if(a.pane==="day") return "today" + (a.block? " · "+a.block.toLowerCase() : "");
-    if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
-    if(a.pane==="inbox") return "inbox";
-    if(a.pane==="aar") return "append and review · " + (a.category||"");
-    if(a.pane==="delete") return "delete";
-    if(a.project) return a.project.replace(/[\[\]]/g,"");
-    if(a.pane) return a.pane;
-    return "";
-  }
-
-  function onDrop(e){
-    // The destination is read from where the row ACTUALLY ended up, not
-    // from Sortable's `e.to`. Those two disagree: with several empty lanes
-    // in play, `e.to` can name a list the row never landed in, and the
-    // request then writes somewhere the screen never showed — a drop aimed
-    // at a future date arriving in the graveyard. The DOM is the thing the
-    // user can see, so the DOM decides.
-    const host = e.item.parentElement || e.to;
-    const from = JSON.parse(e.from.dataset.addr||"{}");
-    const to   = JSON.parse((host && host.dataset.addr) || "{}");
-    if(!to.pane) return;
-    const text = e.item.dataset.text;
-    const project = e.item.dataset.project || null;
-    const samePane = e.from === e.to;
-    if(samePane && e.oldIndex === e.newIndex) return;
-    // position matters only where order carries meaning: the
-    // append-and-review note (top = kept in view) and a project's next
-    // action (first open subtask is what /daily surfaces).
-    move(text, from, to, project, e.newIndex, null, e.item);
-  }
-
   // ── mutations ──────────────────────────
   async function move(text, from, to, project, position, newText, el2){
     if(busy){ toast("one at a time — still saving"); return refresh(); }
@@ -1063,9 +1426,6 @@
     busy = true; setConn(null, "saving…");
     const body = { text, from:from, to:to, position:position };
     if(newText) body.new_text = newText;
-    // The project a line already carries travels with it unless the drop
-    // target names its own. That is what keeps a dated project task tied
-    // to its project all the way through Future Days and back.
     if(project && !to.project) body.from = Object.assign({}, from, {project:from.project||project});
     try{
       const r = await api("/move", {method:"POST", body:JSON.stringify(body)});
@@ -1075,14 +1435,6 @@
           toastBad("saved to the destination, but the original is still in place");
         } else throw new Error(j.error||("HTTP "+r.status));
       } else {
-        // The drag already put the row where you dropped it, and the
-        // server agreed — so nothing is reloaded. Re-fetching after every
-        // move rebuilt the whole board, threw away scroll position and
-        // the groups you had open, and moved the lanes out from under
-        // your next drag. Refresh is ↻, or changing day, and nothing else.
-        // A dropped line leaves the screen wherever the drop came from —
-        // the × button, Backspace, or the strip. Nothing reloads, so the
-        // row has to go by itself.
         if(el2 && to.pane==="delete") el2.remove();
         else if(el2) applyMoved(el2, to, j.project);
         retotal();
@@ -1096,15 +1448,13 @@
     }catch(err){
       toastBad("couldn't move — "+err.message);
       setConn("offline");
-      await refresh();               // the view and the vault disagree now
+      await refresh();
       return false;
     }finally{
       busy = false;
     }
   }
 
-  /** After a confirmed move, the row lives somewhere new — so its address
-   *  has to follow it, or the NEXT drag would send the wrong `from`. */
   function applyMoved(node, to, project){
     node.dataset.addr = JSON.stringify(to);
     if(project) node.dataset.project = project;
@@ -1118,21 +1468,18 @@
     node.classList.toggle("gone", to.pane==="delete");
   }
 
-  /** Recompute each block's open count from the rows actually in it.
-   *  Cheap, local, and the only number on screen a move can change. */
   function retotal(){
     for(const b of (data.blocks||[])){
-      const lane = document.querySelector('.lane[data-addr*=\'"block":"'+b.name+'"\']');
+      const laneEl = document.querySelector('.lane[data-addr*=\'"block":"'+b.name+'"\']');
       const cap = document.getElementById("cap-"+b.name);
-      if(!lane || !cap) continue;
+      if(!laneEl || !cap) continue;
       let open = 0, all = 0;
-      lane.querySelectorAll(".row").forEach(r=>{
+      laneEl.querySelectorAll(".row").forEach(r=>{
         all++; if(!r.classList.contains("done")) open++;
       });
       cap.textContent = open? open+" open" : (all? "done ✓" : "");
       cap.style.color = (b.capacity && open>b.capacity)? "var(--warn)" : "";
     }
-    tagbar();
   }
 
   function markDirty(){
@@ -1140,14 +1487,10 @@
     updateBatchUI();
   }
 
-  // Delete removes the line from its note and keeps nothing: the backend
-  // clears the source and writes no destination. No confirm dialog — the
-  // 5-second undo re-adds the line, and every write is a git commit.
   async function del(text, from, project, node){
     await move(text, from, {pane:"delete"}, project, null, null, node);
   }
 
-  // /check returns the same shape /board's `day` has, minus `sections`.
   function res_day(j){ return j; }
 
   async function tick(r, item, addr){
@@ -1163,14 +1506,12 @@
         busy=false; r.classList.remove("pending"); return refresh();
       }
       if(!res.ok) throw new Error("HTTP "+res.status);
-      // /check hands back the whole day, so a tick costs ONE request — and
-      // the row is already struck through, so there is nothing to re-render
-      // either. Only the block's minute count changes.
       data.day = Object.assign(res_day(await res.json()), {sections:data.day.sections});
       item.checked = want;
       setConn("online");
       busy=false; r.classList.remove("pending");
       retotal();
+      renderSide();
       return;
     }catch(e){
       r.classList.toggle("done", item.checked);
@@ -1189,8 +1530,6 @@
     tx.focus();
     const sel=getSelection(), rg=document.createRange();
     rg.selectNodeContents(tx); sel.removeAllRanges(); sel.addRange(rg);
-    // Removing `contenteditable` blurs the node, which would re-enter this
-    // handler and fire the write twice. One latch, checked first.
     let settled = false;
     const done = async (save)=>{
       if(settled) return;
@@ -1198,8 +1537,6 @@
       tx.removeAttribute("contenteditable");
       const after = tx.textContent.trim();
       if(!save || !after || after===item.text) return render();
-      // A rename is ONE /move: the new text is written and the old line
-      // cleared in the same call, so it cannot half-happen.
       await move(before, addr, addr, r.dataset.project, null, after);
     };
     tx.addEventListener("keydown", e=>{
@@ -1225,12 +1562,6 @@
     const b=el("button","undo","undo");
     b.addEventListener("click", async ()=>{
       t.classList.remove("show");
-      // undo is the same call with the ends swapped — a real inverse,
-      // because a move is symmetric by construction. This one DOES reload:
-      // the row is sitting where you dropped it and has to go back, and an
-      // undo is deliberate enough to be worth the round trip.
-      // Undoing a delete re-adds the line where it was; the "source" is an
-      // empty inbox lookup that clears nothing.
       if(to.pane==="delete") await move(text, {pane:"inbox"}, from, project);
       else await move(text, to, from, project);
       await refresh();
@@ -1242,6 +1573,8 @@
     if(to.pane==="day") return "planned for "+fmtD(to.date)+(to.block?" · "+to.block.toLowerCase():"");
     if(to.pane==="future") return "scheduled for "+fmtD(to.date);
     if(to.pane==="inbox") return "back to the inbox";
+    if(to.pane==="priorities") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to priorities";
+    if(to.pane==="stalled") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to the stalled list";
     if(to.pane==="aar") return "filed under "+to.category;
     if(to.pane==="delete") return "deleted";
     if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
@@ -1286,6 +1619,112 @@
     cfg = all; closeSheets(); refresh();
   });
 
+  // ── capture + search (the top bar) ─────
+  async function doCapture(text){
+    if(!cfg.url){ openSheet(); return; }
+    setConn(null, "capturing…");
+    try{
+      const r = await rawFetch("/capture", {method:"POST", body:JSON.stringify({text:text})});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      toast("captured → inbox");
+      setConn("online");
+      refresh();
+    }catch(e){
+      toastBad("couldn't capture — "+e.message);
+      setConn("offline");
+    }
+  }
+  function searchIndex(){
+    const out=[];
+    const push=(text,where,navTo,list)=>{ if(text) out.push({text,where,navTo,list}); };
+    (function w(ns){ for(const n of ns||[]){ if(n.text) push(n.text,"today","today"); w(n.children); } })(data.day.tasks||[]);
+    for(const t of data.inbox) push(t.text,"inbox","inbox");
+    for(const d of data.future||[]) for(const t of d.tasks) push(t.text,"future · "+fmtD(d.date),"future");
+    for(const src of ["priorities","stalled"]){
+      for(const p of data[src].projects||[]){
+        push(p.display, src, src);
+        for(const t of p.tasks) push(t.text, p.display.replace(/[\[\]]/g,""), src);
+      }
+      for(const t of data[src].tasks||[]) push(t.text, src, src);
+      for(const s of data[src].ideas||[]) push(s.text, src, src);
+    }
+    for(const c of data.aar.categories||[]) for(const it of c.items) push(it.text,"review · "+c.category,"aar");
+    for(const L of data.lists||[]) for(const it of L.items) push(it.text, L.title||L.path, "list", L.path);
+    return out;
+  }
+  function renderOmniDrop(){
+    const d = $("omniDrop");
+    const s = $("omni").value.trim();
+    if(s.length<2){ d.hidden=true; return; }
+    const q = s.toLowerCase();
+    const hits = searchIndex().filter(x=>x.text.toLowerCase().includes(q)).slice(0,8);
+    d.innerHTML = "";
+    const addRow = (label, where, fn)=>{
+      const b = el("button","omnirow");
+      b.append(el("span","omniwhere", where), el("span",null, label));
+      b.addEventListener("click", ()=>{ fn(); $("omni").value=""; d.hidden=true; });
+      d.append(b);
+    };
+    for(const h of hits)
+      addRow(stripTags(h.text).slice(0,80), h.where, ()=>go(h.navTo, h.list));
+    if(!hits.length)
+      addRow("capture “"+s+"” → inbox", "no matches", ()=>doCapture(s));
+    d.hidden = false;
+  }
+  $("omni").addEventListener("input", renderOmniDrop);
+  $("omni").addEventListener("keydown", e=>{
+    if(e.key==="Escape"){ $("omni").value=""; $("omniDrop").hidden=true; $("omni").blur(); }
+    if(e.key==="Enter"){
+      e.preventDefault();
+      const v = $("omni").value.trim();
+      if(!v) return;
+      $("omni").value=""; $("omniDrop").hidden=true;
+      doCapture(v);
+    }
+  });
+  $("omni").addEventListener("blur", ()=>setTimeout(()=>{ $("omniDrop").hidden=true; },180));
+
+  // ── pins: add a list ───────────────────
+  $("pinAddBtn").addEventListener("click", async ()=>{
+    const title = prompt("Pin a new list — its name:");
+    if(!title || !title.trim()) return;
+    setConn(null, "pinning…");
+    try{
+      const r = await rawFetch("/pin/add", {method:"POST", body:JSON.stringify({title:title.trim()})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||r.status);
+      toast(j.created ? "created "+j.path : "already pinned");
+      setConn("online");
+    }catch(e){ toastBad("couldn't pin — "+e.message); setConn("offline"); }
+    refresh();
+  });
+
+  // ── the day's build / pull buttons ─────
+  async function buildDay(){
+    setConn(null,"building…");
+    try{
+      const r = await api("/daily",{method:"POST", body:"{}"});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      toast("day built");
+    }catch(e){ toastBad("couldn't build the day"); }
+    refresh();
+  }
+  async function doMore(){
+    if(busy) return;
+    busy = true; setConn(null,"pulling…");
+    try{
+      const r = await rawFetch("/more", {method:"POST", body:"{}"});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error || r.status);
+      if(j.reason) toast("nothing to pull");
+      else toast("pulled "+j.added+" · "
+        +[["priorities",j.from_priorities],["projects",j.from_projects],
+          ["future",j.from_future],["inbox",j.from_inbox]]
+          .filter(p=>p[1]).map(p=>p[1]+" "+p[0]).join(", "));
+    }catch(e){ toastBad("couldn't pull more: "+e.message); }
+    finally{ busy=false; refresh(); }
+  }
+
   // ── load ───────────────────────────────
   async function refresh(){
     if(!cfg.url){ openSheet(); return; }
@@ -1296,7 +1735,7 @@
       if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
     try{
       // Stage 1 — the day and the calendar. Today paints as soon as this
-      // returns, without waiting on the other four notes.
+      // returns, without waiting on the other notes.
       const cached = ctxCache[viewDate];
       const needCtx = !cached || Date.now()-cached.at > CTX_STALE_MS;
       const ctxP = needCtx ? api("/context?date="+encodeURIComponent(viewDate))
@@ -1304,41 +1743,50 @@
                            : Promise.resolve(cached.data);
       const b = await get("day");
       data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
-        stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]}, loading:true}, b);
+        stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]},
+        lists:[], loading:true}, b);
       fetchedAt = Date.now(); dirty = false;
       setConn("online");
       render();
-      ctxP.then(c=>{ if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c}; data.context = c; renderCtx(c); });
+      ctxP.then(c=>{ if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
+        data.context = c; renderRail(); });
       // Stage 2 — everything else, in the background.
-      const rest = await get("inbox,priorities,future,stalled,aar");
+      const rest = await get("inbox,priorities,future,stalled,aar,lists");
       const myDate = viewDate;
       if(myDate !== viewDate) return;             // you changed day meanwhile
       Object.assign(data, rest, {loading:false, missing:[...(data.missing||[]), ...(rest.missing||[])]});
-      renderSources(); wire($("colSrc")); tagbar();
+      render();
     }catch(e){
       setConn("offline", "couldn't load");
       toastBad("couldn't load the board — "+e.message);
     }
   }
 
-  function renderCtx(c){
-    const host=$("ctx"); host.innerHTML="";
-    if(!c) return;
-    const bits=[];
-    if(c.weather&&c.weather.summary) bits.push((c.weather.place?c.weather.place+" ":"")+c.weather.summary);
-    const n=(c.events||[]).length;
-    bits.push(n? n+" event"+(n===1?"":"s") : "no events");
-    bits.forEach((b,i)=>{
-      if(i) host.append(el("span","sep","·"));
-      host.append(el("span",null,b));
-    });
+  // ── sidebar footer: last-save age ──────
+  function updateFoot(){
+    const f = $("sideFoot"); if(!f) return;
+    if(queue.length){ f.textContent = queue.length+" unsaved"; return; }
+    if(!fetchedAt){ f.textContent = "—"; return; }
+    const s = Math.round((Date.now()-fetchedAt)/1000);
+    f.textContent = s<60 ? "Saved · just now"
+      : s<3600 ? "Saved · "+Math.round(s/60)+" min ago"
+      : "Saved · "+Math.round(s/3600)+"h ago";
   }
+  setInterval(updateFoot, 30000);
 
-  $("prevDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,-1); refresh(); });
-  $("nextDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,1); refresh(); });
-  $("todayBtn").addEventListener("click",()=>{ viewDate=data?data.today:viewDate; refresh(); });
+  // ── global wiring ──────────────────────
+  $("menuBtn").addEventListener("click", ()=>{
+    $("side").classList.toggle("open"); $("sideScrim").classList.toggle("open");
+  });
+  $("sideScrim").addEventListener("click", closeDrawer);
+  document.querySelectorAll(".navitem[data-nav]").forEach(b=>
+    b.addEventListener("click", ()=>go(b.dataset.nav)));
+  $("prevDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,-1); nav="today"; refresh(); });
+  $("nextDay").addEventListener("click",()=>{ viewDate=shiftD(viewDate,1); nav="today"; refresh(); });
+  $("todayBtn").addEventListener("click",()=>{ viewDate=data?data.today:viewDate; nav="today"; refresh(); });
   $("refreshBtn").addEventListener("click",refresh);
   $("batchBtn").addEventListener("click", async ()=>{ await flush(); });
+  $("discardBtn").addEventListener("click", discard);
   $("roughBtn").addEventListener("click", async ()=>{
     if(!confirm("Rough night? Keep the first 3 open tasks today and send the rest back where they came from.")) return;
     if(queue.length){ const ok = await flush(); if(ok===null) return; }
@@ -1351,41 +1799,20 @@
     }catch(e){ toastBad("couldn't: "+e.message); }
     refresh();
   });
-  $("routeBtn").addEventListener("click",()=>{ routeView=!routeView; render(); });
-  $("buildBtn").addEventListener("click",async()=>{
-    $("buildBtn").disabled=true; setConn(null,"building…");
-    try{
-      const r=await api("/daily",{method:"POST", body:"{}"});
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      toast("day built");
-    }catch(e){ toastBad("couldn't build the day"); }
-    finally{ $("buildBtn").disabled=false; refresh(); }
-  });
-  $("moreBtn").addEventListener("click",async()=>{
-    $("moreBtn").disabled=true; setConn(null,"pulling…");
-    try{
-      const r=await rawFetch("/more", {method:"POST", body:"{}"});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error(j.error || r.status);
-      if(j.reason) toast("nothing to pull");
-      else toast("pulled "+j.added+" · "
-        +[["priorities",j.from_priorities],["projects",j.from_projects],
-          ["future",j.from_future],["inbox",j.from_inbox]]
-          .filter(p=>p[1]).map(p=>p[1]+" "+p[0]).join(", "));
-    }catch(e){ toastBad("couldn't pull more: "+e.message); }
-    finally{ $("moreBtn").disabled=false; refresh(); }
-  });
+
   document.addEventListener("keydown",e=>{
+    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="k"){
+      e.preventDefault(); $("omni").focus(); $("omni").select(); return;
+    }
+    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="s"){
+      e.preventDefault(); flush(); return;
+    }
     if(e.target.matches("input,[contenteditable=true]")) return;
-    if(e.key==="ArrowLeft"){ viewDate=shiftD(viewDate,-1); refresh(); }
-    if(e.key==="ArrowRight"){ viewDate=shiftD(viewDate,1); refresh(); }
+    if(e.key==="ArrowLeft"){ viewDate=shiftD(viewDate,-1); nav="today"; refresh(); }
+    if(e.key==="ArrowRight"){ viewDate=shiftD(viewDate,1); nav="today"; refresh(); }
     if(e.key==="r"){ refresh(); }
-    if(e.key==="Escape"){ closeSheets(); }
+    if(e.key==="Escape"){ closeSheets(); closeDrawer(); }
   });
-  // Reloading is manual. Coming back to the tab does not reload — it only
-  // says how old what you are looking at is, and ↻ is right there. The
-  // board is a planning surface you are moving things around on; having it
-  // rebuild itself under you is worse than it being a few minutes stale.
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden || !data) return;
     const age = Math.round((Date.now()-fetchedAt)/60000);
