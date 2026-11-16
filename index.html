@@ -425,6 +425,9 @@
     border:1px solid var(--line); background:none; color:var(--tc,var(--faint))}
   .tagbtn.on{background:color-mix(in srgb,var(--tc,#888) 22%,transparent); border-color:var(--tc,var(--line))}
   .tchip.rough{margin-left:auto; border-style:dashed}
+  .tchip.pull{margin-left:auto; color:var(--accent); border-color:var(--accent-dim, var(--line))}
+  .tchip.pull:disabled{opacity:.45}
+  .tchip.rough{margin-left:0}
 </style>
 </head>
 <body>
@@ -1097,6 +1100,30 @@
     }catch(e){ showToast("couldn't adjust today — check connection"); }
   }
 
+  // the day finished early: pull up to 3 more from the waiting backlog —
+  // priorities, project next-actions, Future Days, inbox — the same call
+  // the board's "Pull 3 more" makes. Deduped server-side against
+  // everything already on today's list, so this can't double-pull.
+  async function pullMore(btn){
+    btn.disabled=true;
+    try{
+      const r=await api("/more?count=3",{ method:"POST", body:"{}" });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j=await r.json();
+      if(!j.added){ showToast("nothing waiting — the sources are empty"); return; }
+      const bits=["pulled "+j.added];
+      if(j.from_projects) bits.push(j.from_projects+" project");
+      if(j.from_inbox) bits.push(j.from_inbox+" inbox");
+      if(j.from_future) bits.push(j.from_future+" future");
+      showToast(bits.join(" · ")+(j.waiting? " · "+j.waiting+" waiting":""));
+      const t=await api("/today");
+      if(!t.ok) throw new Error("HTTP "+t.status);
+      todayData=await t.json(); todayFetchedAt=Date.now();
+      renderToday();
+    }catch(e){ showToast("couldn't pull — check connection"); }
+    finally{ btn.disabled=false; }
+  }
+
   function todayMetaLine(d){
     const bits=[fmtDate(d.date)];
     if(!d.exists){ bits.push("not built yet"); return bits.join(" · "); }
@@ -1150,6 +1177,10 @@
         b.addEventListener("click",()=>{ todayTagFilter=(todayTagFilter===t)?"":t; renderToday(); });
         chips.append(b);
       });
+      const pb=el("button","tchip pull"); pb.textContent="pull 3 more";
+      pb.title="Pull up to 3 more tasks from the waiting backlog (priorities, projects, future days, inbox)";
+      pb.addEventListener("click",()=>pullMore(pb));
+      chips.append(pb);
       const rb=el("button","tchip rough"); rb.textContent="rough night";
       rb.title="Keep the first 3 open tasks, send the rest back where they came from";
       rb.addEventListener("click",roughNight);
