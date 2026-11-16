@@ -425,9 +425,8 @@
     border:1px solid var(--line); background:none; color:var(--tc,var(--faint))}
   .tagbtn.on{background:color-mix(in srgb,var(--tc,#888) 22%,transparent); border-color:var(--tc,var(--line))}
   .tchip.rough{margin-left:auto; border-style:dashed}
-  .tchip.pull{margin-left:auto; color:var(--accent); border-color:var(--accent-dim, var(--line))}
+  .tchip.pull{color:var(--accent); border-color:var(--accent-dim)}
   .tchip.pull:disabled{opacity:.45}
-  .tchip.rough{margin-left:0}
 </style>
 </head>
 <body>
@@ -1165,9 +1164,25 @@
       const foot=el("div","vfoot"); foot.textContent=d.path; todayBody.append(foot);
       return;
     }
+    // the action row: the two day-shaping levers, first thing in the body
+    // so they're visible without scrolling past the context line
+    {
+      const acts=el("div","tchips acts");
+      const pb=el("button","tchip pull"); pb.textContent="pull 3 more";
+      pb.title="Pull up to 3 more tasks from the waiting backlog (priorities, projects, future days, inbox)";
+      pb.addEventListener("click",()=>pullMore(pb));
+      acts.append(pb);
+      const rb=el("button","tchip rough"); rb.textContent="rough night";
+      rb.title="Keep the first 3 open tasks, send the rest back where they came from";
+      rb.addEventListener("click",roughNight);
+      acts.append(rb);
+      todayBody.append(acts);
+    }
+
+    // context line: weather + today's events
     renderContext();
 
-    // tag filter chips + the rough-night button
+    // tag filter chips
     {
       const all=flatTasks(d.tasks);
       const chips=el("div","tchips");
@@ -1177,14 +1192,6 @@
         b.addEventListener("click",()=>{ todayTagFilter=(todayTagFilter===t)?"":t; renderToday(); });
         chips.append(b);
       });
-      const pb=el("button","tchip pull"); pb.textContent="pull 3 more";
-      pb.title="Pull up to 3 more tasks from the waiting backlog (priorities, projects, future days, inbox)";
-      pb.addEventListener("click",()=>pullMore(pb));
-      chips.append(pb);
-      const rb=el("button","tchip rough"); rb.textContent="rough night";
-      rb.title="Keep the first 3 open tasks, send the rest back where they came from";
-      rb.addEventListener("click",roughNight);
-      chips.append(rb);
       todayBody.append(chips);
     }
 
