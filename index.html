@@ -267,14 +267,6 @@
   }
   .ctx .sep{color:var(--faint)}
   .ctx.stale{color:var(--faint)}
-  .blk-head{
-    display:flex; align-items:baseline; gap:.5rem;
-    font-size:.7rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-    color:var(--faint); margin:1rem 0 .1rem;
-  }
-  .blk-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
-                  text-transform:none; color:var(--accent-dim)}
-  .blk-head.now{color:var(--accent)}
   .tv-empty{
     margin:2.2rem 0; text-align:center; color:var(--faint);
     display:flex; flex-direction:column; gap:.9rem; align-items:center;
@@ -345,9 +337,10 @@
   .ptop .lbl{font-size:.8rem; line-height:1.35}
   .ptop .sub{display:block; font-size:.7rem; color:var(--faint); margin-top:.1rem}
 
-  /* ── shared view chrome: head, panels, footnote ── */
-  /* capture earns its calm from soft cards and generous space; the list
-     views now use the same vocabulary instead of naked rows. */
+  /* ── shared view chrome: head, cards, footnote ── */
+  /* capture earns its calm from soft cards and generous space. The Today
+     list itself is deliberately naked rows — the day reads as one flat
+     list — while the outside list keeps the card. */
   .vhead{display:flex; align-items:flex-start; gap:.6rem; padding-bottom:.2rem}
   .vh-txt{flex:1; min-width:0}
   .vh-title{font-size:1.28rem; font-weight:700; letter-spacing:-.025em; line-height:1.15}
@@ -369,16 +362,6 @@
     padding:.55rem .8rem;
   }
   .panel + .panel{margin-top:.6rem}
-  .panel-head{
-    display:flex; align-items:baseline; gap:.5rem; padding:.35rem 0 .45rem;
-    font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-    color:var(--muted);
-  }
-  .panel-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
-                    text-transform:none; color:var(--faint)}
-  .panel-head .n{margin-left:auto; font-family:var(--mono); font-size:.68rem;
-                 letter-spacing:0; color:var(--faint); font-weight:500}
-  .panel-head.now{color:var(--accent)}
   .vfoot{font-family:var(--mono); font-size:.64rem; color:var(--faint);
          opacity:.65; text-align:center; padding:.9rem 0 .2rem}
   .vhint{font-size:.72rem; color:var(--faint); text-align:center; padding:.8rem 0 .2rem}
@@ -406,7 +389,7 @@
     *{animation:none !important; transition:none !important}
   }
 
-  /* tags, focus, collapsing panels */
+  /* tags, focus */
   .t-urgent{--tc:var(--warn,#d98a6a)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
   .t-call{--tc:#b7a0dc}
   .tagp{display:inline-block; margin-left:.4rem; font-size:.66rem; padding:0 .35rem; border-radius:6px;
@@ -416,10 +399,6 @@
   .tchip{flex:none; font:inherit; font-size:.76rem; padding:.3rem .7rem; min-height:34px;
     border:1px solid var(--line); border-radius:99px; background:none; color:var(--faint)}
   .tchip.on{background:var(--accent); color:#1a1206; border-color:var(--accent)}
-  .panel-head{cursor:pointer; user-select:none}
-  .pchev{color:var(--faint); font-size:.7rem; margin-right:.4rem; display:inline-block; transition:transform .15s}
-  .panel.collapsed .pchev{transform:rotate(-90deg)}
-  .panel.collapsed > :not(.panel-head){display:none}
   .tagrow{display:flex; gap:.35rem; overflow-x:auto; padding:.15rem 0 .35rem}
   .tagbtn{flex:none; font:inherit; font-size:.76rem; padding:.3rem .65rem; min-height:34px; border-radius:99px;
     border:1px solid var(--line); background:none; color:var(--tc,var(--faint))}
@@ -1046,7 +1025,6 @@
     while((m=TAG_RE.exec(n.text||""))){ const t=m[2].toLowerCase(); if(!o.includes(t)) o.push(t); } return o; };
   const titleOf=n=>n.title || (n.text||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
   let todayTagFilter="";
-  const panelState={};                 // "date|block" → true = folded (session)
   const flatTasks=ns=>(ns||[]).flatMap(n=>[...(n.box?[n]:[]),...flatTasks(n.children)]);
   function taskRow(n, depth, onToggle){
     const row=el("div","task-row"+(n.box? (n.checked?" done":"") : " struct"));
@@ -1149,17 +1127,13 @@
       const g=el("span","glyph"); g.textContent="⌗";
       const p=el("p"); p.textContent="No list yet for "+fmtDate(d.date)+".";
       const s=el("p"); s.style.fontSize=".78rem"; s.style.color="var(--faint)";
-      s.textContent="The morning run builds it at 8am.";
+      s.textContent="The daily run builds it each morning.";
       box.append(g,p,s);
       todayBody.append(box);
       if((d.done||[]).length){
-        const panel=el("div","panel");
-        const h=el("div","panel-head");
-        const t=el("span"); t.textContent="already done"; h.append(t);
-        const n=el("span","n"); n.textContent=d.done.length; h.append(n);
-        panel.append(h);
-        for(const nd of d.done) panel.append(taskRow(nd,0,()=>{}));
-        todayBody.append(panel);
+        const lbl=el("div","tv-section"); lbl.textContent="already done";
+        todayBody.append(lbl);
+        for(const nd of d.done) todayBody.append(taskRow(nd,0,()=>{}));
       }
       const foot=el("div","vfoot"); foot.textContent=d.path; todayBody.append(foot);
       return;
@@ -1195,17 +1169,10 @@
       todayBody.append(chips);
     }
 
-    // group by the `| Block` hint the scheduler stamped on each task. That
-    // replaces the old `#### Morning` subsections in the markdown — same
-    // layout, but the file stays a flat record.
-    const order=(todayCtx&&todayCtx.blocks? todayCtx.blocks.map(b=>b.name) : d.blocks||[]);
-    const spans={}; (todayCtx&&todayCtx.blocks||[]).forEach(b=>{spans[b.name]=b.start+"–"+b.end;});
-    const groups=new Map(); order.forEach(b=>groups.set(b,[]));
-    const loose=[];
-    for(const n of d.tasks||[]){
-      const b=n.block;
-      if(b && groups.has(b)) groups.get(b).push(n); else loose.push(n);
-    }
+    // one flat list, tasks straight on the background — no part-of-day
+    // grouping any more (the block scheduler went away server-side; the day
+    // file is the order). Project work still lists as a parent row with its
+    // next step, so a project never disappears from the day.
     // A parent with unchecked subtasks collapses to just its NEXT one, so
     // you only ever face a single step. Tap the small title to see the
     // full ladder.
@@ -1239,34 +1206,7 @@
         walk(n.children,depth+1,into);
       }
     };
-    // top-level only, so a panel's count agrees with the head's task count —
-    // steps are how ONE task gets done, not additional tasks
-    const openCount=ns=>(ns||[]).filter(n=>n.box && !n.checked).length;
-    const panelFor=(name, span, nodes)=>{
-      const panel=el("div","panel");
-      const h=el("div","panel-head");
-      const t=el("span"); t.textContent=name; h.append(t);
-      if(span){ const s=el("span","span"); s.textContent=span; h.append(s); }
-      const n=el("span","n");
-      const oc=openCount(nodes);
-      n.textContent=oc? oc : "done";
-      h.append(n);
-      panel.append(h);
-      const ch=el("span","pchev"); ch.textContent="▾"; h.prepend(ch);
-      walk(nodes,0,panel);
-      // finished blocks fold by default; a tap overrides for the session
-      const pk=d.date+"|"+name;
-      panel.classList.toggle("collapsed", pk in panelState ? panelState[pk] : (oc===0 && nodes.length>0));
-      h.addEventListener("click",()=>{ panelState[pk]=panel.classList.toggle("collapsed"); });
-      todayBody.append(panel);
-    };
-    for(const [name,nodes] of groups){
-      if(!nodes.length) continue;
-      panelFor(name, spans[name], nodes);
-    }
-    if(loose.length){
-      panelFor("anytime", null, loose);
-    }
+    walk(d.tasks, 0);
     const foot=el("div","vfoot"); foot.textContent=d.path; todayBody.append(foot);
   }
 

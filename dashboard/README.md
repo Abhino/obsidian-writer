@@ -34,7 +34,7 @@ the vault as it stands; override if you move them.
 | `DROPPED_SHOW_DAYS` | `7` |
 
 Everything else — the priorities note, the inbox, Future Days, the month
-files, the block schedule — comes from the variables already set.
+files — comes from the variables already set.
 
 ## One note needs a small edit
 
@@ -64,8 +64,7 @@ a duplicate, which the next load flags, never a lost task.
 
 | Dropped on | What is written |
 | --- | --- |
-| a block in Today | `### Today Tasks`, stamped `\| Morning` |
-| Today, from a project | under that project's bullet in `### Project Tasks` |
+| Today | under `### Today Tasks` (or `### Project Tasks`, nested under that project's bullet, when it came from one) |
 | a Future Days date | under that date, nested under its project bullet if it has one |
 | a project | a subtask of that project |
 | an append-and-review category | a plain bullet at the position you dropped it |
@@ -121,10 +120,7 @@ that point the screen and the vault disagree.
   record they are.
 - **`defer view`** shades every unfinished task with where `/defer` would
   send it tomorrow: `stays`, `→ project`, `→ future`.
-- **Block capacity** (`50 / 168 min`) is computed with the same helpers
-  `/daily` budgets with, so "over" here means what the scheduler means by
-  full. It turns amber past the line.
-- **Type into a block** to add a task straight to the day.
+- **Type into the day** to add a task straight to it.
 - **`✎`** renames in place, **`◷`** schedules for a date.
 - **Undo** on every move, for five seconds. It is the same call with the
   ends swapped.
@@ -141,8 +137,10 @@ that point the screen and the vault disagree.
 parallel plus the calendar.
 
 `POST /move` — `{text, new_text?, from, to, position?}`, where an address
-is `{pane, date?, block?, project?, category?}` and `pane` is one of
-`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`.
+is `{pane, date?, project?, category?}` and `pane` is one of
+`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`. A `block` key is
+still accepted in `to` for compatibility with older clients but is ignored —
+the day is one flat list now.
 
 ## Tests
 

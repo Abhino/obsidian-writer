@@ -178,18 +178,7 @@
   .pullbtn:hover{background:color-mix(in srgb,var(--ok) 12%,transparent)}
   .pullbtn:disabled{opacity:.45; cursor:default}
 
-  /* ── day blocks ───────────────────────── */
-  .blk{border:1px dashed var(--line); border-radius:11px; padding:.3rem .6rem .5rem; margin-bottom:.55rem}
-  .blk.now{border-color:var(--accent-dim)}
-  .blk.over .cap{color:var(--warn)}
-  .blk-head{display:flex; align-items:baseline; gap:.5rem; padding:.3rem 0 .15rem;
-            font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-            color:var(--faint)}
-  .blk.now .blk-head{color:var(--accent)}
-  .blk-head .span{font-family:var(--mono); font-size:.66rem; letter-spacing:0;
-                  text-transform:none; color:var(--faint); font-weight:500}
-  .cap{margin-left:auto; font-family:var(--mono); font-size:.66rem; letter-spacing:0;
-       text-transform:none; color:var(--faint); font-weight:500}
+  /* ── day events (the day itself is one flat lane; blocks went away) ── */
   .evt{font-family:var(--mono); font-size:.74rem; color:var(--muted);
        display:flex; gap:.5rem; padding:.2rem 0 .2rem .1rem}
   .evt .when{color:var(--accent-dim); font-weight:600; flex:none}
@@ -313,12 +302,6 @@
            color:var(--warn); font-size:.76rem; padding:.45rem .7rem; margin-bottom:.2rem}
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
 
-  /* collapsing blocks */
-  .blk-head{cursor:pointer; user-select:none}
-  .blk-head .chev{color:var(--faint); font-size:.7rem; width:.9rem; transition:transform .15s}
-  .blk.collapsed .blk-head .chev{transform:rotate(-90deg)}
-  .blk.collapsed .lane, .blk.collapsed .adder, .blk.collapsed .evt{display:none}
-
   /* ── floating save bar ────────────────── */
   .savebar{
     position:fixed; left:50%; transform:translateX(-50%); bottom:1.1rem; z-index:28;
@@ -375,7 +358,6 @@
     .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
     .rowacts .mvb{display:inline-block}
     .rowacts button:not(.mvb):not(.x){display:none}
-    .blk-head{min-height:44px}
     input, textarea, [contenteditable]{font-size:16px}
     .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
     .toast{bottom:calc(5.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
@@ -506,7 +488,6 @@
     return o; };
   const stripTags = s => (s||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
   let tagFilter = "";
-  const blkState = {};       // "date|block" → true = open; session only
 
   // ── api ────────────────────────────────
   function rawFetch(path, opts){
@@ -650,7 +631,7 @@
     sc.addEventListener("click", ()=>pickDate(t=>{
       const a = JSON.parse(r.dataset.addr);
       move(r.dataset.text, a, {pane:"future", date:t}, r.dataset.project,
-           null, null, r).then(ok=>{ if(ok){ r.remove(); retotal(); } });
+           null, null, r).then(ok=>{ if(ok) r.remove(); });
     }));
     acts.append(ed, sc);
     if(!item.checked){
@@ -873,14 +854,10 @@
                               : "Nothing planned for this day yet. Drop anything here to start it."));
     }
 
-    // group the day's tasks by block hint, in schedule order. Blocks,
-    // capacities and events all come from /board, computed with the same
-    // helpers /daily budgets with — so "over capacity" here means exactly
-    // what the scheduler means by full.
-    const blocks = data.blocks || [];
-    const names = blocks.map(b=>b.name);
-    const byBlock = new Map(names.map(n=>[n,[]]));
-    const loose = [];
+    // one flat lane for the whole day. Blocks went with the block scheduler
+    // server-side — the day file's own order is the plan now, and the cap
+    // line below is the only budget. Events (all-day AND timed) still show
+    // above the lane, because appointments are the fixed frame around it.
     const sections = taskIndex();
     const flat = [];
     (function walk(nodes, project){
@@ -889,68 +866,25 @@
         walk(n.children, n.box? project : n.text);
       }
     })(data.day.tasks||[], null);
-    for(const f of flat){
-      const b = f.node.block;
-      (b && byBlock.has(b) ? byBlock.get(b) : loose).push(f);
-    }
 
-    const evs = data.events || [];
-    for(const ev of evs) if(ev.all_day){
+    for(const ev of (data.events||[])){
       const e = el("div","evt");
-      e.append(el("span","when","all day"), el("span",null,ev.title));
+      e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
       card.append(e);
     }
-    for(const b of blocks){
-      const name = b.name;
-      const items = byBlock.get(name)||[];
-      const openc = items.filter(f=>!f.node.checked).length;
-      const cap = b.capacity;
-      const wrap = el("div","blk"+(isNow(b)?" now":"")+(cap&&openc>cap?" over":""));
-      const bh = el("div","blk-head");
-      bh.append(el("span","chev","▾"), el("span",null,name.toLowerCase()));
-      if(b.label) bh.append(el("span","span", b.label));
-      const capEl = el("span","cap", openc? openc+" open" : (items.length?"done ✓":""));
-      if(cap) capEl.title = "soft cap "+cap+" (less events in this block)";
-      capEl.id = "cap-"+name;
-      bh.append(capEl);
-      wrap.append(bh);
-      const bk = viewDate+"|"+name;
-      const fold = bk in blkState ? !blkState[bk]
-                                  : (items.length>0 && openc===0);
-      wrap.classList.toggle("collapsed", fold);
-      bh.addEventListener("click", ()=>{
-        blkState[bk] = wrap.classList.toggle("collapsed") ? false : true;
-      });
-      for(const ev of evs) if(inBlock(ev,b)){
-        const e = el("div","evt");
-        e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
-        wrap.append(e);
-      }
-      const l = lane({pane:"day", date:viewDate, block:name});
-      for(const f of items)
-        l.append(row(nodeItem(f), {pane:"day", date:viewDate, block:name},
-                     {tickable:true, route:sections[norm(f.node.text)]}));
-      wrap.append(l);
-      const add = el("input","adder");
-      add.placeholder = "add to "+name.toLowerCase()+"…";
-      add.addEventListener("keydown", e=>{
-        if(e.key!=="Enter" || !add.value.trim()) return;
-        const v = add.value.trim(); add.value="";
-        move(v, {pane:"inbox"}, {pane:"day", date:viewDate, block:name});
-      });
-      wrap.append(add);
-      card.append(wrap);
-    }
-    if(loose.length){
-      const wrap = el("div","blk");
-      wrap.append(el("div","blk-head","anytime"));
-      const l = lane({pane:"day", date:viewDate});
-      for(const f of loose)
-        l.append(row(nodeItem(f), {pane:"day", date:viewDate},
-                     {tickable:true, route:sections[norm(f.node.text)]}));
-      wrap.append(l);
-      card.append(wrap);
-    }
+    const l = lane({pane:"day", date:viewDate});
+    for(const f of flat)
+      l.append(row(nodeItem(f), {pane:"day", date:viewDate},
+                   {tickable:true, route:sections[norm(f.node.text)]}));
+    card.append(l);
+    const add = el("input","adder");
+    add.placeholder = "add to today…";
+    add.addEventListener("keydown", e=>{
+      if(e.key!=="Enter" || !add.value.trim()) return;
+      const v = add.value.trim(); add.value="";
+      move(v, {pane:"inbox"}, {pane:"day", date:viewDate});
+    });
+    card.append(add);
 
     // finished work folds away; a click reopens it
     if(done){
@@ -1230,16 +1164,6 @@
     return {text:f.node.text, hint:f.node.hint, checked:f.node.checked,
             project:f.project, raw:f.node.text};
   }
-  function isNow(b){
-    if(viewDate!==data.today || b.start==null) return false;
-    const d=new Date(), m=d.getHours()*60+d.getMinutes();
-    return m>=b.start && m<b.end;
-  }
-  function inBlock(ev, b){
-    // /board sends event bounds in minutes, so no clock-string parsing.
-    if(b.start==null || ev.start_minutes==null) return false;
-    return ev.start_minutes>=b.start && ev.start_minutes<b.end;
-  }
 
   function upcoming(){
     const out = (data.future||[]).filter(d=>d.tasks.length || d.date>=data.today);
@@ -1285,14 +1209,11 @@
         onStart: ()=>{
           document.body.classList.add("dragging");
           PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
-          PTR_EVENTS.forEach(n=>document.addEventListener(n, hoverOpen, true));
         },
         onMove: e=>{ markTarget(e.to); },
         onEnd: e=>{
           document.body.classList.remove("dragging");
           PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
-          PTR_EVENTS.forEach(n=>document.removeEventListener(n, hoverOpen, true));
-          clearTimeout(hoverT); hoverB = null;
           const onTrash = overTrash();
           markTarget(null);
           if(onTrash){
@@ -1342,7 +1263,7 @@
     tagEl.classList.add("on");
   }
   function laneName(a){
-    if(a.pane==="day") return "today" + (a.block? " · "+a.block.toLowerCase() : "");
+    if(a.pane==="day") return "today";
     if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
     if(a.pane==="inbox") return "inbox";
     if(a.pane==="priorities") return a.project? a.project.replace(/[\[\]]/g,"") : "priorities";
@@ -1377,14 +1298,9 @@
       const b = el("button", cls||null, label);
       b.addEventListener("click", ()=>{ closeMove(); fn(); }); sheet.append(b);
     };
-    (data.blocks||[]).forEach(b=>{
-      if(from.pane==="day" && from.block===b.name) return;
-      add("→ "+b.name.toLowerCase()+(b.label?"  "+b.label:""), ()=>
-        move(text, from, {pane:"day", date:viewDate, block:b.name}, r.dataset.project, undefined, null, r));
-    });
     add("→ tomorrow", async ()=>{
       const d = parseD(viewDate); d.setDate(d.getDate()+1);
-      if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)){ r.remove(); retotal(); }
+      if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)) r.remove();
     });
     const hit = lbl => [...acts.children].find(b=>b.textContent===lbl);
     if(hit("✎")) add("✎ rename", ()=>hit("✎").click());
@@ -1392,20 +1308,6 @@
     if(hit("×")) add("× delete", ()=>hit("×").click(), "danger");
     add("cancel", ()=>{}, "cancel");
     $("mvScrim").classList.add("open"); sheet.classList.add("open");
-  }
-
-  // Dragging onto a folded block opens it after a beat, so folded blocks
-  // stay valid drop targets.
-  let hoverT = null, hoverB = null;
-  function hoverOpen(e){
-    const t = e.touches && e.touches[0] ? e.touches[0] : e;
-    if(t.clientX==null) return;
-    const h = document.elementFromPoint(t.clientX, t.clientY);
-    const b = h && h.closest ? h.closest(".blk.collapsed") : null;
-    if(b!==hoverB){
-      clearTimeout(hoverT); hoverB = b;
-      if(b) hoverT = setTimeout(()=>b.classList.remove("collapsed"), 450);
-    }
   }
 
   function taskIndex(){
@@ -1437,7 +1339,6 @@
       } else {
         if(el2 && to.pane==="delete") el2.remove();
         else if(el2) applyMoved(el2, to, j.project);
-        retotal();
         markDirty();
         offerUndo(text, from, to, j.project);
         updateBatchUI();
@@ -1468,20 +1369,6 @@
     node.classList.toggle("gone", to.pane==="delete");
   }
 
-  function retotal(){
-    for(const b of (data.blocks||[])){
-      const laneEl = document.querySelector('.lane[data-addr*=\'"block":"'+b.name+'"\']');
-      const cap = document.getElementById("cap-"+b.name);
-      if(!laneEl || !cap) continue;
-      let open = 0, all = 0;
-      laneEl.querySelectorAll(".row").forEach(r=>{
-        all++; if(!r.classList.contains("done")) open++;
-      });
-      cap.textContent = open? open+" open" : (all? "done ✓" : "");
-      cap.style.color = (b.capacity && open>b.capacity)? "var(--warn)" : "";
-    }
-  }
-
   function markDirty(){
     dirty = true;
     updateBatchUI();
@@ -1510,7 +1397,6 @@
       item.checked = want;
       setConn("online");
       busy=false; r.classList.remove("pending");
-      retotal();
       renderSide();
       return;
     }catch(e){
@@ -1570,7 +1456,7 @@
     clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 5000);
   }
   function describe(to){
-    if(to.pane==="day") return "planned for "+fmtD(to.date)+(to.block?" · "+to.block.toLowerCase():"");
+    if(to.pane==="day") return "planned for "+fmtD(to.date);
     if(to.pane==="future") return "scheduled for "+fmtD(to.date);
     if(to.pane==="inbox") return "back to the inbox";
     if(to.pane==="priorities") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to priorities";
