@@ -177,6 +177,27 @@
   }
   .pullbtn:hover{background:color-mix(in srgb,var(--ok) 12%,transparent)}
   .pullbtn:disabled{opacity:.45; cursor:default}
+  .capover{font-family:var(--mono); font-size:.68rem; color:var(--warn)}
+
+  /* ── projects + grooming ─────────────── */
+  .projcard{
+    border:1px solid var(--line); border-radius:11px; padding:.45rem .55rem .5rem;
+    margin:.4rem 0; background:var(--bg-2);
+  }
+  .projhead{display:flex; align-items:baseline; gap:.45rem; flex-wrap:wrap}
+  .projhead .name{font-weight:600; font-size:.86rem}
+  .projhead .n{font-family:var(--mono); font-size:.64rem; color:var(--faint)}
+  .pill{
+    font-family:var(--mono); font-size:.6rem; border:1px solid var(--line);
+    border-radius:999px; padding:.05rem .4rem; color:var(--muted);
+  }
+  .pill.active{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+  .pill.stalled{color:var(--warn); border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+  .pill.future{color:var(--accent); border-color:var(--accent-dim)}
+  .projhead .addnext{margin-left:auto}
+  .projmeta{font-size:.66rem; color:var(--faint); padding:.15rem 0 0}
+  .intro{font-size:.76rem; color:var(--muted); padding:.15rem .1rem .45rem; line-height:1.5}
+  .intro code{font-family:var(--mono); font-size:.7rem; color:var(--accent-dim)}
 
   /* ── day events (the day itself is one flat lane; blocks went away) ── */
   .evt{font-family:var(--mono); font-size:.74rem; color:var(--muted);
@@ -407,7 +428,9 @@
       <button class="navitem" data-nav="today"><span>Today</span><span class="n"></span></button>
       <button class="navitem" data-nav="inbox"><span>Inbox</span><span class="n"></span></button>
       <button class="navitem" data-nav="priorities"><span>Priorities</span><span class="n"></span></button>
+      <button class="navitem" data-nav="projects"><span>Projects</span><span class="n"></span></button>
       <button class="navitem" data-nav="future"><span>Future days</span><span class="n"></span></button>
+      <button class="navitem" data-nav="grooming"><span>Grooming</span><span class="n"></span></button>
       <button class="navitem" data-nav="stalled"><span>Stalled</span><span class="n"></span></button>
       <button class="navitem" data-nav="aar"><span>Review</span><span class="n"></span></button>
       <div class="side-sec">tags</div>
@@ -723,7 +746,14 @@
       inbox: (data.inbox||[]).length,
       priorities: (data.priorities.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
                   + (data.priorities.tasks||[]).length,
+      projects: (data.priorities.projects||[]).filter(p=>p.tasks.length).length
+                + (data.stalled.projects||[]).filter(p=>p.tasks.length).length,
       future: (data.future||[]).reduce((a,d)=>a+d.tasks.length,0),
+      // Only the queue counts. `## Someday` is deliberately parked — it is
+      // visible in the view but never added to the number that nags.
+      grooming: ((data.grooming&&data.grooming.sections)||[])
+                .filter(s=>s.name.trim().toLowerCase()==="to groom")
+                .reduce((a,s)=>a+s.tasks.length,0),
       stalled: (data.stalled.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
                + (data.stalled.ideas||[]).length,
       aar: (data.aar.categories||[]).reduce((a,c)=>a+c.items.length,0),
@@ -739,6 +769,8 @@
     (function w(ns){ for(const n of ns||[]){ bump(n.text); w(n.children); } })(data.day.tasks||[]);
     for(const t of data.inbox) bump(t.text);
     for(const d of data.future||[]) for(const t of d.tasks) bump(t.text);
+    for(const s of (data.grooming&&data.grooming.sections)||[])
+      for(const t of s.tasks) bump(t.text);
     for(const src of ["priorities","stalled"]){
       for(const p of data[src].projects||[]){ bump(p.display); for(const t of p.tasks) bump(t.text); }
       for(const t of data[src].tasks||[]) bump(t.text);
@@ -750,7 +782,7 @@
   // ── sidebar ────────────────────────────
   function renderSide(){
     const c = navCounts();
-    for(const k of ["today","inbox","priorities","future","stalled","aar"]){
+    for(const k of ["today","inbox","priorities","projects","future","grooming","stalled","aar"]){
       const n = document.querySelector('.navitem[data-nav="'+k+'"] .n');
       if(n) n.textContent = String(c[k]);
     }
@@ -800,6 +832,8 @@
     const host = $("main"); host.innerHTML = "";
     if(nav==="today") renderDay(host);
     else if(nav==="list") renderListView(host);
+    else if(nav==="grooming") renderGroomingView(host);
+    else if(nav==="projects") renderProjectsView(host);
     else renderSourceView(host);
     applyDim();
     wire(host);
@@ -834,9 +868,14 @@
     (function w(ns){ for(const n of ns||[]){
       if(n.box){ n.checked? done++ : open++; } w(n.children); } })(data.day.tasks||[]);
     const sum = el("div","daysum");
+    const planned = done+open;
+    const cap = data.day.cap||0;
+    const over = cap && planned>cap ? planned-cap : 0;
     sum.append(el("span",null, data.day.exists
-      ? done+" of "+(done+open)+" done · "+waitingCount()+" waiting"
+      ? done+" of "+planned+" done · "+waitingCount()+" waiting"
       : "not built yet"));
+    if(over) sum.append(el("span","capover",
+      "+"+over+" over cap — dated commitments land first"));
     if(data.day.exists && done+open){
       const pr = el("div","prog");
       for(let i=0;i<Math.min(done+open,10);i++) pr.append(el("i", i<done?"f":null));
@@ -911,7 +950,9 @@
       const line = el("div","capline");
       line.append(el("span","rule"));
       line.append(el("span","capline-t",
-        "Today's cap is "+(data.day.cap||"—")+". Drag a task above the line to plan it"));
+        "Today's cap is "+(data.day.cap||"—")
+        +(over ? " · "+planned+" planned ("+over+" over, commitments first)" : "")
+        +". Drag a task above the line to plan it"));
       const pm = el("button","pullbtn","Pull 3 more"); pm.id="pullBtn";
       pm.addEventListener("click",doMore);
       line.append(pm);
@@ -1048,6 +1089,158 @@
     }
   }
 
+  // ── render: grooming ───────────────────
+  // Location is the state. `## To groom` is the queue; `## Someday` is parked
+  // and stays out of the sidebar count. A task keeps its project badge when
+  // it was parked nested under a project bullet, so dragging it back out is
+  // how it becomes ready.
+  function renderGroomingView(host){
+    const g = data.grooming || {path:"", exists:false, sections:[]};
+    const card = el("div","card day");
+    const head = el("div","dayhead");
+    head.append(el("h1",null,"Grooming"));
+    if(g.path) head.append(el("span","daysub", g.path.split("/").pop()));
+    card.append(head);
+    const gi = el("div","intro");
+    gi.append("Park anything that is not ready to start. Only ",
+      el("code",null,"## To groom"), " is queued; ",
+      el("code",null,"## Someday"), " is parked. Drag a task out (or open ⋯) ",
+      "when it is ready — /daily never reads this note.");
+    card.append(gi);
+    if((data.missing||[]).includes("grooming"))
+      card.append(el("div","warnbar",
+        "not created yet — the first thing you park here creates "+g.path));
+    for(const s of g.sections||[]){
+      const key = "g:"+s.name;
+      card.append(group(s.name, null, s.tasks.length, key));
+      const l = lane({pane:"grooming", category:s.name}, {mini:true});
+      if(!collapsed.has(key)){
+        for(const t of s.tasks)
+          l.append(row(t, {pane:"grooming", category:s.name,
+                           project:t.project||null}, {}));
+        if(!s.tasks.length) l.append(el("div","empty","nothing parked"));
+      }
+      card.append(l);
+      const add = el("input","adder");
+      add.placeholder = "park something in "+s.name.toLowerCase()+"…";
+      add.addEventListener("keydown", e=>{
+        if(e.key!=="Enter" || !add.value.trim()) return;
+        const v = add.value.trim(); add.value="";
+        move(v, {pane:"inbox"}, {pane:"grooming", category:s.name});
+      });
+      card.append(add);
+    }
+    host.append(card);
+  }
+
+  // ── render: projects ───────────────────
+  // One first-class space for both `Top Projects` (active) and the stalled
+  // list. The project bullet and its first open subtask are the unit —
+  // counts and future commitments are read live from the same /board payload,
+  // never cached separately.
+  function sameProj(a, b){
+    const ka = String(a||"").replace(/[\[\]]/g,"").trim().toLowerCase();
+    const kb = String(b||"").replace(/[\[\]]/g,"").trim().toLowerCase();
+    if(!ka || !kb) return false;
+    if(ka===kb) return true;
+    // Same minimum-length rule as board._same_project: a one-letter name
+    // must not match every project that contains that letter.
+    const short = ka.length<=kb.length ? ka : kb;
+    const long_ = ka.length<=kb.length ? kb : ka;
+    return short.length>=3 && long_.includes(short);
+  }
+  function projectFuture(body){
+    const out = [];
+    for(const d of data.future||[])
+      for(const t of d.tasks||[])
+        if(t.project && sameProj(t.project, body))
+          out.push({date:d.date, text:t.text});
+    return out;
+  }
+  function addProjectLine(card){
+    const add = el("input","adder");
+    add.placeholder = "new project name…";
+    add.addEventListener("keydown", async e=>{
+      if(e.key!=="Enter" || !add.value.trim()) return;
+      const v = add.value.trim(); add.value="";
+      try{
+        const r = await rawFetch("/projects/add", {method:"POST",
+          body:JSON.stringify({name:v})});
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+        toast(j.changed ? "project added" : "already there");
+        setConn("online"); refresh();
+      }catch(err){ toastBad("couldn't add project — "+err.message); }
+    });
+    card.append(add);
+  }
+  function renderProjectsView(host){
+    const card = el("div","card day");
+    const head = el("div","dayhead");
+    head.append(el("h1",null,"Projects"));
+    card.append(head);
+    const pi = el("div","intro");
+    pi.append("Active projects are the ",
+      el("code",null,"Top Projects"), " bullets; stalled ones come from the ",
+      "stalled list. The first unchecked subtask is the next action, and ",
+      "dated work parked in Future Days is counted against its project.");
+    card.append(pi);
+    card.append(el("div","sub","add a project to Top Priorities"));
+    addProjectLine(card);
+
+    const groups = [
+      ["active", "priorities", (data.priorities&&data.priorities.projects)||[]],
+      ["stalled", "stalled", (data.stalled&&data.stalled.projects)||[]],
+    ];
+    let total = 0;
+    for(const [kind, pane, projs] of groups){
+      if(!projs.length) continue;
+      const gk = "pv:"+kind;
+      card.append(group(kind+" projects", null, projs.length, gk));
+      if(collapsed.has(gk)) continue;
+      for(const p of projs){
+        total++;
+        const fut = projectFuture(p.body);
+        const pc = el("div","projcard");
+        const ph = el("div","projhead");
+        ph.append(el("span","name", p.display),
+                  el("span","pill "+kind, kind));
+        ph.append(el("span","n", p.tasks.length+" next"));
+        if(fut.length) ph.append(el("span","pill future", fut.length+" future"));
+        pc.append(ph);
+        const meta = [];
+        meta.push(p.tasks.length ? "next: "+p.tasks[0].text
+                                 : "no next action — add one or drop a task here");
+        if(fut.length)
+          meta.push("future: "+fut.map(f=>fmtD(f.date)).join(", "));
+        pc.append(el("div","projmeta", meta.join(" · ")));
+        const l = lane({pane:pane, project:p.body}, {mini:true});
+        for(const t of p.tasks)
+          l.append(row(t, {pane:pane, project:p.body}, {}));
+        if(!p.tasks.length) l.append(el("div","empty","drop a task here"));
+        pc.append(l);
+        const add = el("input","adder");
+        add.placeholder = "next action for "+p.display+"…";
+        add.addEventListener("keydown", async e=>{
+          if(e.key!=="Enter" || !add.value.trim()) return;
+          const v = add.value.trim(); add.value="";
+          try{
+            const r = await rawFetch("/project/task", {method:"POST",
+              body:JSON.stringify({project:p.body, text:v})});
+            const j = await r.json().catch(()=>({}));
+            if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+            toast(j.changed ? "next action added" : "already there");
+            setConn("online"); refresh();
+          }catch(err){ toastBad("couldn't add — "+err.message); }
+        });
+        pc.append(add);
+        card.append(pc);
+      }
+    }
+    if(!total) card.append(el("div","empty","no projects yet — add one above"));
+    host.append(card);
+  }
+
   // ── render: a pinned list ──────────────
   function renderListView(host){
     const L = (data.lists||[]).find(x=>x.path===listNav);
@@ -1174,7 +1367,9 @@
       if(!have.has(dt)) out.push({date:dt, overdue:false, tasks:[]});
     }
     out.sort((a,b)=>a.date<b.date?-1:1);
-    return out.slice(0,14);
+    // No slice: a task parked six months out is still a commitment, and the
+    // board is where you go to see (and reprioritize) the whole horizon.
+    return out;
   }
 
   // Two open tasks that normalize to the same key are one task as far as
@@ -1194,6 +1389,8 @@
     })(data.day.tasks||[]);
     for(const t of data.inbox) add(t.text, "the inbox");
     for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
+    for(const s of (data.grooming&&data.grooming.sections)||[])
+      for(const t of s.tasks) add(t.text, "grooming");
     for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
       for(const p of src[1].projects||[]) for(const t of p.tasks) add(t.text, src[0]);
     return out;
@@ -1302,6 +1499,20 @@
       const d = parseD(viewDate); d.setDate(d.getDate()+1);
       if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)) r.remove();
     });
+    // Grooming entry is manual by design: /triage is unchanged, and this is
+    // the phone-friendly equivalent of dragging a row onto the Grooming view.
+    if(from.pane==="grooming"){
+      add("→ today", async ()=>{
+        if(await move(text, from, {pane:"day", date:viewDate}, r.dataset.project)) r.remove();
+      });
+      add("→ priorities", async ()=>{
+        if(await move(text, from, {pane:"priorities"}, r.dataset.project)) r.remove();
+      });
+    } else {
+      add("→ grooming", async ()=>{
+        if(await move(text, from, {pane:"grooming", category:"To groom"}, r.dataset.project)) r.remove();
+      });
+    }
     const hit = lbl => [...acts.children].find(b=>b.textContent===lbl);
     if(hit("✎")) add("✎ rename", ()=>hit("✎").click());
     if(hit("◷")) add("◷ schedule for a date…", ()=>hit("◷").click());
@@ -1526,6 +1737,8 @@
     (function w(ns){ for(const n of ns||[]){ if(n.text) push(n.text,"today","today"); w(n.children); } })(data.day.tasks||[]);
     for(const t of data.inbox) push(t.text,"inbox","inbox");
     for(const d of data.future||[]) for(const t of d.tasks) push(t.text,"future · "+fmtD(d.date),"future");
+    for(const s of (data.grooming&&data.grooming.sections)||[])
+      for(const t of s.tasks) push(t.text,"grooming · "+s.name,"grooming");
     for(const src of ["priorities","stalled"]){
       for(const p of data[src].projects||[]){
         push(p.display, src, src);
@@ -1630,14 +1843,14 @@
       const b = await get("day");
       data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
         stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]},
-        lists:[], loading:true}, b);
+        grooming:{path:"",exists:false,sections:[{name:"To groom",tasks:[]}]}, lists:[], loading:true}, b);
       fetchedAt = Date.now(); dirty = false;
       setConn("online");
       render();
       ctxP.then(c=>{ if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
         data.context = c; renderRail(); });
       // Stage 2 — everything else, in the background.
-      const rest = await get("inbox,priorities,future,stalled,aar,lists");
+      const rest = await get("inbox,priorities,future,stalled,aar,grooming,lists");
       const myDate = viewDate;
       if(myDate !== viewDate) return;             // you changed day meanwhile
       Object.assign(data, rest, {loading:false, missing:[...(data.missing||[]), ...(rest.missing||[])]});

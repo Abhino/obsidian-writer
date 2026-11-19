@@ -28,8 +28,8 @@ the vault as it stands; override if you move them.
 | --- | --- |
 | `APPEND_REVIEW_PATH` | `02 Append and Review Note.md` |
 | `STALLED_PATH` | `Stalled, New Project List.md` |
+| `GROOMING_PATH` | `30-Tasks/Grooming.md` |
 | `AAR_OPEN_CATEGORIES` | `India things to do,Restaurants,To Watch` |
-| `FUTURE_HORIZON_DAYS` | `14` |
 | `DROPPED_PATH` | `30-Tasks/Dropped.md` |
 | `DROPPED_SHOW_DAYS` | `7` |
 
@@ -67,12 +67,49 @@ a duplicate, which the next load flags, never a lost task.
 | Today | under `### Today Tasks` (or `### Project Tasks`, nested under that project's bullet, when it came from one) |
 | a Future Days date | under that date, nested under its project bullet if it has one |
 | a project | a subtask of that project |
+| Grooming | an unchecked bullet under `## To groom`, nested under its project when it has one |
 | an append-and-review category | a plain bullet at the position you dropped it |
 | the strip at the bottom | dropped — logged in `Dropped.md`, not destroyed |
 
 Order matters in two places, so reordering is a real edit: a project's
 first open subtask is its next action, and the top of an
 append-and-review category is what stays in view.
+
+## Grooming
+
+`30-Tasks/Grooming.md` (override with `GROOMING_PATH`) is a dedicated
+note, not a tag. Location is the state:
+
+```markdown
+## To groom
+- [ ] Read the zoning packet
+- [[Kitchen remodel]]
+	- [ ] Pick a cabinet finish
+## Someday
+- [ ] Learn to sail
+```
+
+Only `## To groom` counts in the sidebar and is the queue. `## Someday`
+is parked: visible in the view, deliberately not in the number, and
+`/daily` never reads either section. Park something with the add line on
+the Grooming view, `⋯ → grooming` on any row, or by dragging a row there.
+Moving a task out (to Today, a project, priorities) is what makes it
+ready. Entry is manual only; `/triage` behaviour is unchanged.
+
+## Projects
+
+The Projects view merges the active `Top Projects:` bullets with the
+stalled list. Each project shows its source (active/stalled), its open
+next-action count, the first unchecked subtask, and how many dated tasks
+are parked for it in Future Days. Two endpoints back the inline add
+lines:
+
+- `POST /projects/add` `{name}` — append `- [[name]]` to Top Projects.
+- `POST /project/task` `{project, text}` — file a next action at the top
+  of that project's subtasks (Top Priorities first, then the stalled
+  list).
+
+Both are idempotent; rerunning either never duplicates a line.
 
 ## Dropping
 
@@ -133,14 +170,27 @@ that point the screen and the vault disagree.
 
 ## Endpoints
 
-`GET /board?date=` — every pane in one round trip, six notes read in
+`GET /board?date=` — every pane in one round trip, all notes read in
 parallel plus the calendar.
 
 `POST /move` — `{text, new_text?, from, to, position?}`, where an address
 is `{pane, date?, project?, category?}` and `pane` is one of
-`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`. A `block` key is
-still accepted in `to` for compatibility with older clients but is ignored —
-the day is one flat list now.
+`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`, `grooming`. A
+`block` key is still accepted in `to` for compatibility with older clients
+but is ignored — the day is one flat list now.
+
+`POST /projects/add` — `{name}`; `POST /project/task` — `{project, text}`.
+
+## The cap
+
+Future Days entries dated today or earlier are commitments. `/daily`
+charges them against the cap first and lets all of them land, then fills
+the rest with priorities, project next actions, recurring duties, and
+inbox captures. If the dated work already meets the cap, none of those
+auto-sources pull. Both the day summary and the dashed cap line say how
+many tasks are over, because an over-cap day you planned yourself is a
+fact to show, not a load to hide. `/more` pulls every remaining dated
+commitment first, then tops up to `MORE_TAKE`.
 
 ## Tests
 
