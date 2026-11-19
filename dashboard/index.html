@@ -1157,14 +1157,14 @@
           out.push({date:d.date, text:t.text});
     return out;
   }
-  function addProjectLine(card){
+  function addProjectLine(card, stalled){
     const add = el("input","adder");
-    add.placeholder = "new project name…";
+    add.placeholder = stalled ? "add a stalled project…" : "new project name…";
     add.addEventListener("keydown", async e=>{
       if(e.key!=="Enter" || !add.value.trim()) return;
       const v = add.value.trim(); add.value="";
       try{
-        const r = await rawFetch("/projects/add", {method:"POST",
+        const r = await rawFetch(stalled ? "/stalled/projects/add" : "/projects/add", {method:"POST",
           body:JSON.stringify({name:v})});
         const j = await r.json().catch(()=>({}));
         if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
@@ -1187,6 +1187,8 @@
     card.append(pi);
     card.append(el("div","sub","add a project to Top Priorities"));
     addProjectLine(card);
+    card.append(el("div","sub","or park a stalled project"));
+    addProjectLine(card, true);
 
     const groups = [
       ["active", "priorities", (data.priorities&&data.priorities.projects)||[]],
@@ -1198,43 +1200,58 @@
       const gk = "pv:"+kind;
       card.append(group(kind+" projects", null, projs.length, gk));
       if(collapsed.has(gk)) continue;
+      // Keep the stalled note's headings as sections inside each kind.
+      const bySection = new Map();
       for(const p of projs){
-        total++;
-        const fut = projectFuture(p.body);
-        const pc = el("div","projcard");
-        const ph = el("div","projhead");
-        ph.append(el("span","name", p.display),
-                  el("span","pill "+kind, kind));
-        ph.append(el("span","n", p.tasks.length+" next"));
-        if(fut.length) ph.append(el("span","pill future", fut.length+" future"));
-        pc.append(ph);
-        const meta = [];
-        meta.push(p.tasks.length ? "next: "+p.tasks[0].text
-                                 : "no next action — add one or drop a task here");
-        if(fut.length)
-          meta.push("future: "+fut.map(f=>fmtD(f.date)).join(", "));
-        pc.append(el("div","projmeta", meta.join(" · ")));
-        const l = lane({pane:pane, project:p.body}, {mini:true});
-        for(const t of p.tasks)
-          l.append(row(t, {pane:pane, project:p.body}, {}));
-        if(!p.tasks.length) l.append(el("div","empty","drop a task here"));
-        pc.append(l);
-        const add = el("input","adder");
-        add.placeholder = "next action for "+p.display+"…";
-        add.addEventListener("keydown", async e=>{
-          if(e.key!=="Enter" || !add.value.trim()) return;
-          const v = add.value.trim(); add.value="";
-          try{
-            const r = await rawFetch("/project/task", {method:"POST",
-              body:JSON.stringify({project:p.body, text:v})});
-            const j = await r.json().catch(()=>({}));
-            if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
-            toast(j.changed ? "next action added" : "already there");
-            setConn("online"); refresh();
-          }catch(err){ toastBad("couldn't add — "+err.message); }
-        });
-        pc.append(add);
-        card.append(pc);
+        const s = p.section || kind;
+        if(!bySection.has(s)) bySection.set(s, []);
+        bySection.get(s).push(p);
+      }
+      for(const [section, list] of bySection){
+        const sk = gk+":"+section;
+        if(projs.some(p=>p.section)){
+          card.append(group(section, null, list.length, sk));
+          if(collapsed.has(sk)) continue;
+        }
+        for(const p of list){
+          total++;
+          const fut = projectFuture(p.body);
+          const pc = el("div","projcard");
+          const ph = el("div","projhead");
+          ph.append(el("span","name", p.display),
+                    el("span","pill "+kind, kind));
+          ph.append(el("span","n", p.tasks.length+" next"));
+          if(fut.length) ph.append(el("span","pill future", fut.length+" future"));
+          ph.append(projectMoveBtn(p, pane));
+          pc.append(ph);
+          const meta = [];
+          meta.push(p.tasks.length ? "next: "+p.tasks[0].text
+                                   : "no next action — add one or drop a task here");
+          if(fut.length)
+            meta.push("future: "+fut.map(f=>fmtD(f.date)).join(", "));
+          pc.append(el("div","projmeta", meta.join(" · ")));
+          const l = lane({pane:pane, project:p.body}, {mini:true});
+          for(const t of p.tasks)
+            l.append(row(t, {pane:pane, project:p.body}, {}));
+          if(!p.tasks.length) l.append(el("div","empty","drop a task here"));
+          pc.append(l);
+          const add = el("input","adder");
+          add.placeholder = "next action for "+p.display+"…";
+          add.addEventListener("keydown", async e=>{
+            if(e.key!=="Enter" || !add.value.trim()) return;
+            const v = add.value.trim(); add.value="";
+            try{
+              const r = await rawFetch("/project/task", {method:"POST",
+                body:JSON.stringify({project:p.body, text:v})});
+              const j = await r.json().catch(()=>({}));
+              if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+              toast(j.changed ? "next action added" : "already there");
+              setConn("online"); refresh();
+            }catch(err){ toastBad("couldn't add — "+err.message); }
+          });
+          pc.append(add);
+          card.append(pc);
+        }
       }
     }
     if(!total) card.append(el("div","empty","no projects yet — add one above"));
@@ -1318,35 +1335,81 @@
     }
   }
 
+  /** Move a whole project (bullet + its next actions) between the two
+   *  project homes. Not batched: it read-modify-writes both notes. */
+  function projectMoveBtn(p, pane){
+    const to = pane==="stalled" ? "priorities" : "stalled";
+    const b = el("button","ghost mini", to==="priorities" ? "→ priorities" : "→ stalled");
+    b.title = "Move this project and its next actions to "
+              +(to==="priorities" ? "Top Priorities" : "the stalled list");
+    b.addEventListener("click", async e=>{
+      e.stopPropagation();
+      try{
+        const r = await rawFetch("/project/move", {method:"POST",
+          body:JSON.stringify({name:p.body, from:pane, to:to})});
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+        toast("project moved to "+to);
+        setConn("online"); refresh();
+      }catch(err){ toastBad("couldn't move project — "+err.message); }
+    });
+    return b;
+  }
+
   function projectCard(title, pane, d){
     const card = el("div","card");
     const h = el("div","card-head");
     h.append(el("span",null,title));
     h.append(el("span","path",(d.path||"").split("/").pop()));
     card.append(h);
+    // Stalled notes are organised by headings, not labels. Group by the
+    // nearest heading so "Need to Start Right away" stays intact.
+    const bySection = new Map();
     for(const p of d.projects||[]){
-      const key = pane+":"+p.body;
-      const g = group(p.display, null, p.tasks.length, key);
-      card.append(g);
-      const l = lane({pane:pane, project:p.body}, {mini:true});
-      if(!collapsed.has(key)){
-        for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
-        if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
-      }
-      card.append(l);
+      const s = p.section || "projects";
+      if(!bySection.has(s)) bySection.set(s, []);
+      bySection.get(s).push(p);
     }
+    for(const [section, projs] of bySection){
+      const sk = pane+":"+section;
+      card.append(group(section, null, projs.length, sk));
+      if(collapsed.has(sk)) continue;
+      for(const p of projs){
+        const key = pane+":"+p.body;
+        const g = group(p.display, null, p.tasks.length, key);
+        g.append(projectMoveBtn(p, pane));
+        card.append(g);
+        const l = lane({pane:pane, project:p.body}, {mini:true});
+        if(!collapsed.has(key)){
+          for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
+          if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+        }
+        card.append(l);
+      }
+    }
+    if(!(d.projects||[]).length)
+      card.append(el("div","empty",
+        pane==="stalled" ? "nothing parsed — top-level `- [ ]` or `[[wikilink]]` bullets are projects"
+                         : "no projects yet"));
     if(d.tasks && d.tasks.length!==undefined){
       card.append(el("div","sub","tasks"));
       const l = lane({pane:pane}, {mini:true});
       for(const t of d.tasks) l.append(row(t, {pane:pane}, {}));
       card.append(l);
     }
-    if(d.ideas && d.ideas.length){
-      const key = pane+":ideas";
-      card.append(group("ideas", null, d.ideas.length, key));
-      if(!collapsed.has(key)){
+    if((d.ideas||[]).length){
+      const secs = new Map();
+      for(const it of d.ideas){
+        const s = it.section || "ideas";
+        if(!secs.has(s)) secs.set(s, []);
+        secs.get(s).push(it);
+      }
+      for(const [section, items] of secs){
+        const key = pane+":ideas:"+section;
+        card.append(group(section, null, items.length, key));
+        if(collapsed.has(key)) continue;
         const l = lane({pane:pane, ideas:true}, {mini:true});
-        for(const t of d.ideas) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
+        for(const t of items) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
         card.append(l);
       }
     }

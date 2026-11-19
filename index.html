@@ -323,6 +323,14 @@
     text-overflow:ellipsis; white-space:nowrap}
   .prow .pn{font-family:var(--mono); font-size:.66rem; color:var(--faint); flex:none}
   .pempty{color:var(--faint); font-size:.82rem; padding:.9rem .25rem; text-align:center}
+  .padd{display:flex; align-items:center; gap:.35rem; padding:.6rem .25rem .1rem;
+        border-top:1px solid var(--line)}
+  .padd input{
+    flex:1; min-width:0; background:var(--surface); border:1px solid var(--line);
+    border-radius:9px; color:var(--ink); font:inherit; font-size:.82rem; padding:.42rem .5rem;
+  }
+  .padd input::placeholder{color:var(--faint)}
+  .padd button{flex:none; font-size:.72rem; padding:.35rem .5rem}
   /* next-action toggle — the difference between tomorrow and "someday" */
   .ptop{
     display:flex; align-items:flex-start; gap:.6rem; margin-top:1rem;
@@ -514,6 +522,11 @@
       <span class="lbl">Make this the next action
         <span class="sub">Files it above the project's other subtasks, so tomorrow's list picks it up.</span>
       </span>
+    </div>
+    <div class="padd">
+      <input id="projNew" placeholder="add a new project…" />
+      <button class="test" id="projNewActive" title="Create in Top Priorities">active</button>
+      <button class="test" id="projNewStalled" title="Park in the stalled list">stalled</button>
     </div>
     <div class="row">
       <button class="test" id="projRefresh">Refresh</button>
@@ -925,6 +938,41 @@
   });
   $("projRefresh").addEventListener("click",loadProjects);
   $("projDone").addEventListener("click",()=>{ closeSheet(); input.focus(); });
+
+  // Create a project without leaving the phone. The offline queue only
+  // stores capture descriptors, so a project creation needs the network —
+  // say so instead of silently dropping it.
+  async function addProjectFromPWA(stalled){
+    if(!cfg.url){ showToast("set a backend URL first"); return; }
+    const name=$("projNew").value.trim();
+    if(!name) return;
+    if(!navigator.onLine){ showToast("add a project when back online"); return; }
+    $("projNew").value="";
+    try{
+      const r=await api(stalled?"/stalled/projects/add":"/projects/add",{
+        method:"POST", body:JSON.stringify({name})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+      showToast(j.changed ? (stalled?"stalled project added":"project added") : "already there");
+      await loadProjects();
+      // Stalled projects are placeholders — the picker only captures into
+      // active Top Priorities projects, so do not select a stalled one.
+      if(!stalled && j.body){
+        const p=projects.find(x=>x.body===j.body);
+        if(p){
+          project={body:p.body, display:p.display};
+          LS.set("inbox.project", project);
+          setComposeTarget("project");
+          renderProjects();
+        }
+      }
+    }catch(e){ showToast("couldn't add project — "+e.message); }
+  }
+  $("projNewActive").addEventListener("click",()=>addProjectFromPWA(false));
+  $("projNewStalled").addEventListener("click",()=>addProjectFromPWA(true));
+  $("projNew").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); addProjectFromPWA(false); }
+  });
 
   // ── backend api helper ─────────────────
   function api(path, opts){

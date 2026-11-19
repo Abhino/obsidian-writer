@@ -79,7 +79,7 @@ Endpoints this app consumes (auth: `Authorization: Bearer <token>`):
 | `GET /list`, `POST /list/check` | outside tab + pins | standing lists, cross-file tick |
 | `GET /projects` | project picker | `Top Projects:` bullets |
 | `POST /check`, `/more`, `/rough` | Today actions | toggle, top-up, cut back |
-| `GET /board`, `POST /move`, `/pin/*`, `/projects/add`, `/project/task` | dashboard | one-round-trip panes, drags, pin edits, project creation |
+| `GET /board`, `POST /move`, `/pin/*`, `/projects/add`, `/stalled/projects/add`, `/project/task`, `/project/move` | dashboard + PWA | one-round-trip panes, drags, pin edits, project creation/moves |
 
 Behavioral truth for these lives in `../cloudrun_obsidian_writer/` (see
 its AGENTS.md). Changing a payload shape is a coordinated edit across

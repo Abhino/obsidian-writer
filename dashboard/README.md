@@ -36,24 +36,28 @@ the vault as it stands; override if you move them.
 Everything else — the priorities note, the inbox, Future Days, the month
 files — comes from the variables already set.
 
-## One note needs a small edit
+## How the stalled note is read
 
-`Stalled, New Project List.md` has no labels, so the board can't tell a
-project from a loose idea. Add two:
+`Stalled, New Project List.md` does NOT need labels. The board scans the
+whole note and groups by the nearest heading, so a scratchpad like this
+works as-is:
 
 ```markdown
-Projects:
-- [[Health]]
-	- [ ] Abhinav setup dermatology referral through Galileo health
-- [ ] Setup Privacy Trees
-Ideas:
+##### Need to Start Right away
+- [[Office Trip Return to USA Oct 2026]]
+- [ ] Loft sofa - new project to find a recliner use meta muse
+##### Need to Start in future
+- [ ] Autonomus Trading Bot
+	- [ ] https://github.com/TraderAlice/OpenAlice
+- [[AI Testing]]
+	- [ ] Use Venice AI and sample prompt ideas?
 - Skydiving
 ```
 
-A top-level `- [ ]` with no wikilink is treated as a project that has no
-page yet, so it can carry subtasks and be dragged into Top Priorities.
-Ideas are plain bullets with no checkbox, so nothing tries to schedule
-them. `## Stalled List` works as an `Ideas:` label too.
+A top-level `- [ ]` (or `[[wikilink]]`) bullet is a project; a plain bullet
+is an idea; indented bullets are that project's next actions. Labels such
+as `Projects:` and `Ideas:` are still accepted when present. Projects keep
+their source heading in the Projects view.
 
 ## What a drag does
 
@@ -105,11 +109,16 @@ are parked for it in Future Days. Two endpoints back the inline add
 lines:
 
 - `POST /projects/add` `{name}` — append `- [[name]]` to Top Projects.
+- `POST /stalled/projects/add` `{name}` — park a project in the stalled note.
 - `POST /project/task` `{project, text}` — file a next action at the top
   of that project's subtasks (Top Priorities first, then the stalled
   list).
+- `POST /project/move` `{name, from, to}` — move a whole project and its
+  next actions between `priorities` and `stalled`.
 
-Both are idempotent; rerunning either never duplicates a line.
+Both creation endpoints are idempotent; rerunning either never duplicates
+a line. Each project card has a `→ priorities` / `→ stalled` button that
+uses `/project/move`.
 
 ## Dropping
 
