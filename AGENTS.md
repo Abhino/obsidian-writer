@@ -7,13 +7,13 @@ files from GitHub Pages:
   (root, `<pages url>/`): compose targets inbox / today / outside /
   project, a Today tab fed by `/today` + `/context`, pinned lists.
 - `dashboard/` — the **board**, the desktop planning view (sidebar, day,
-  calendar rail, drag-to-move). Same origin as the capture app, scoped
+  calendar rail, move button). Same origin as the capture app, scoped
   under `/dashboard/` so its service worker never evicts the capture
   shell.
 
 Both are single-file apps: **all HTML, CSS and JS is inline in each
-`index.html`** — vanilla JS, no framework, no build step, no npm. The
-only vendored dependency is `dashboard/sortable.min.js`.
+`index.html`** — vanilla JS, no framework, no build step, no npm, and no
+vendored dependencies.
 
 ## Hard rules
 
@@ -37,12 +37,12 @@ only vendored dependency is `dashboard/sortable.min.js`.
 - **`flush()` stops on the first failure and keeps queue order** — a
   tunnel shouldn't reorder a day's thoughts. `force=true` (settings
   save, manual retry) overrides the `navigator.onLine` check only.
-- **The board never reloads itself.** A drag writes to the vault and
-  leaves the row where it landed; `↻` / day change / undo are what
+- **The board never reloads itself.** A move writes to the vault and
+  removes the row from its source lane; `↻` / day change / undo are what
   re-fetch, because reloading after every move threw away scroll
   position and open groups.
-- There is no delete: drops go to `Dropped.md`, removals are moves, and
-  destructive-sounding UI actions always have an undo or a file to open.
+- There is no destructive delete: removals are moves, and
+  destructive-sounding UI actions always have an undo.
 
 ## Conventions
 
@@ -79,7 +79,7 @@ Endpoints this app consumes (auth: `Authorization: Bearer <token>`):
 | `GET /list`, `POST /list/check` | outside tab + pins | standing lists, cross-file tick |
 | `GET /projects` | project picker | `Top Projects:` bullets |
 | `POST /check`, `/more`, `/rough` | Today actions | toggle, top-up, cut back |
-| `GET /board`, `POST /move`, `/pin/*`, `/projects/add`, `/stalled/projects/add`, `/project/task`, `/project/move` | dashboard + PWA | one-round-trip panes, drags, pin edits, project creation/moves |
+| `GET /board`, `POST /move`, `/pin/*`, `/projects/add`, `/stalled/projects/add`, `/project/task`, `/project/move` | dashboard + PWA | one-round-trip panes, moves, pin edits, project creation/moves |
 
 Behavioral truth for these lives in `../cloudrun_obsidian_writer/` (see
 its AGENTS.md). Changing a payload shape is a coordinated edit across

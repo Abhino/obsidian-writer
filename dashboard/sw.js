@@ -4,8 +4,8 @@
 //
 // BUMP `CACHE` ON EVERY index.html CHANGE. The shell is cache-first, so a
 // stale version string means you keep running the old board.
-const CACHE = "board-shell-v15";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./sortable.min.js"];
+const CACHE = "board-shell-v16";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -1,7 +1,7 @@
 # Board
 
 A desktop planning view over the notes you already plan from. Today is the
-target; everything else is a source you drag lines out of.
+target; everything else is a source you move lines out of.
 
 It is a second PWA in this repo, deliberately not a second app: same
 origin, same `inbox.cfg` in localStorage, so the backend URL and token you
@@ -30,8 +30,6 @@ the vault as it stands; override if you move them.
 | `STALLED_PATH` | `Stalled, New Project List.md` |
 | `GROOMING_PATH` | `30-Tasks/Grooming.md` |
 | `AAR_OPEN_CATEGORIES` | `India things to do,Restaurants,To Watch` |
-| `DROPPED_PATH` | `30-Tasks/Dropped.md` |
-| `DROPPED_SHOW_DAYS` | `7` |
 
 Everything else — the priorities note, the inbox, Future Days, the month
 files — comes from the variables already set.
@@ -59,25 +57,27 @@ is an idea; indented bullets are that project's next actions. Labels such
 as `Projects:` and `Ideas:` are still accepted when present. Projects keep
 their source heading in the Projects view.
 
-## What a drag does
+## What a move does
 
-A drag is always a move: the line leaves the source and lands at the
+Every move is a real move: the line leaves the source and lands at the
 target, so there is still exactly one live copy. The destination is
 written first and the source cleared second — a failure in between leaves
 a duplicate, which the next load flags, never a lost task.
 
-| Dropped on | What is written |
+The `⇢` button on a task row opens the full destination menu: Today,
+Tomorrow, any Future Days date, Inbox, Priorities, every active or stalled
+project, Grooming sections, and Review categories.
+
+| Moved to | What is written |
 | --- | --- |
 | Today | under `### Today Tasks` (or `### Project Tasks`, nested under that project's bullet, when it came from one) |
 | a Future Days date | under that date, nested under its project bullet if it has one |
 | a project | a subtask of that project |
-| Grooming | an unchecked bullet under `## To groom`, nested under its project when it has one |
-| an append-and-review category | a plain bullet at the position you dropped it |
-| the strip at the bottom | dropped — logged in `Dropped.md`, not destroyed |
+| Grooming | an unchecked bullet under the chosen section, nested under its project when it has one |
+| a Review category | a plain bullet at the top of that category — storage, not a task |
 
-Order matters in two places, so reordering is a real edit: a project's
-first open subtask is its next action, and the top of an
-append-and-review category is what stays in view.
+Order still matters in one place: a project's first open subtask is its
+next action. The move menu does not reorder tasks inside a pane.
 
 ## Grooming
 
@@ -96,9 +96,9 @@ note, not a tag. Location is the state:
 Only `## To groom` counts in the sidebar and is the queue. `## Someday`
 is parked: visible in the view, deliberately not in the number, and
 `/daily` never reads either section. Park something with the add line on
-the Grooming view, `⋯ → grooming` on any row, or by dragging a row there.
-Moving a task out (to Today, a project, priorities) is what makes it
-ready. Entry is manual only; `/triage` behaviour is unchanged.
+the Grooming view, or `⇢ → Grooming` on any row. Moving a task out (to
+Today, a project, priorities) is what makes it ready. Entry is manual
+only; `/triage` behaviour is unchanged.
 
 ## Projects
 
@@ -120,40 +120,27 @@ Both creation endpoints are idempotent; rerunning either never duplicates
 a line. Each project card has a `→ priorities` / `→ stalled` button that
 uses `/project/move`.
 
-## Dropping
+## Review is long-term storage
 
-There is no delete. `×` on a row, the strip at the bottom, or `Backspace`
-on a focused row all do the same thing: move the line to
-`30-Tasks/Dropped.md` under today's date, carrying where it came from.
+Review categories — restaurants, places to watch, things to do — hold
+plain bullets, not tasks. They are destinations for archiving a task or
+idea, and the Review view has its own add line so you can store something
+directly. `/daily` never reads them, they never appear on Today, and they
+have no checkbox or schedule. A stored item can be renamed or removed;
+there is deliberately no “move it back to a task” button.
 
-```markdown
-## 2026-09-19
-- [ ] Faceless youtube channel %%from: stalled%%
-- [ ] Soccer cleats PHANTOM VENOM %%from: aar · To buy%%
-```
+## Removing
 
-The `%%…%%` mark is an Obsidian comment, so it is invisible in reading
-view, and it is the same provenance convention `%%ai%%` already uses. It
-never becomes part of a task's identity.
-
-Two reasons this is a move rather than an erasure. A stray drag should
-never destroy anything — so there is no confirmation dialog, just a
-five-second undo and a file you can open. And the system had no way to say
-no to a task: `Dropped.md` is the only record of what you chose not to do,
-which makes "what do I keep abandoning, and how long did it survive first"
-answerable for the first time.
-
-The graveyard card shows the last seven days, collapsed, newest first. It
-is a drag source like any other pane, so restoring is just dragging a line
-back out — or `◷` to schedule it for a date. A completed task in a month
-file has no `×`: that is the record.
+There is no destructive delete. `×` on a row or `Backspace` on a focused
+row removes the line, and git history keeps it. Every removal has a
+five-second undo, so a stray click is never an erasure.
 
 ## Reloading is manual
 
-The board never reloads itself. A drag writes to the vault and leaves the
-row where you dropped it — it does not re-fetch, because rebuilding the
+The board never reloads itself. A move writes to the vault and removes the
+row from its source lane — it does not re-fetch, because rebuilding the
 whole board after every move threw away your scroll position and the
-groups you had open, and moved the lanes out from under the next drag.
+groups you had open.
 
 `↻` reloads. So does changing day, and so does an undo. When something is
 unsaved or stale the status line says so (`edited · ↻`, `4m old · ↻`)
@@ -167,13 +154,13 @@ that point the screen and the vault disagree.
 - **`defer view`** shades every unfinished task with where `/defer` would
   send it tomorrow: `stays`, `→ project`, `→ future`.
 - **Type into the day** to add a task straight to it.
-- **`✎`** renames in place, **`◷`** schedules for a date.
+- **`✎`** renames in place, **`◷`** schedules for a date, **`⇢`** moves to
+  any destination: a date, Inbox, Priorities, a project, Grooming, or
+  Review.
 - **Undo** on every move, for five seconds. It is the same call with the
   ends swapped.
 - **Keys**: `←` `→` change day, `r` reloads, `Esc` closes a sheet,
-  `Backspace` drops the focused row.
-- **While dragging**, every lane shows its edge, the one that will catch
-  the drop is highlighted, and its name floats beside the pointer.
+  `Backspace` removes the focused row.
 - A warning bar appears when two open tasks normalize to the same text,
   because `/check` cannot tell them apart.
 
@@ -205,7 +192,7 @@ commitment first, then tops up to `MORE_TAKE`.
 
 `test_board.py` (parsers and mutations against the real note samples),
 `test_roundtrip.py` (a project task through Future Days and home again),
-`test_e2e.py` (real drags in a real browser against `fakevault.py`, which
+`test_e2e.py` (real moves in a real browser against `fakevault.py`, which
 runs the actual service over an in-memory vault).
 
 ```

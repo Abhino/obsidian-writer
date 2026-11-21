@@ -1,7 +1,7 @@
 {
   "name": "Board — Obsidian vault planner",
   "short_name": "Board",
-  "description": "Plan the day by dragging lines between the notes that feed it.",
+  "description": "Plan the day by moving lines between the notes that feed it.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

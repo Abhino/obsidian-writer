@@ -204,29 +204,15 @@
        display:flex; gap:.5rem; padding:.2rem 0 .2rem .1rem}
   .evt .when{color:var(--accent-dim); font-weight:600; flex:none}
 
-  /* ── a draggable line ─────────────────── */
+  /* ── a list of task lines ─────────────── */
   .lane{min-height:34px; border-radius:8px; padding:1px 0}
   .lane.mini{min-height:26px}
-  body.dragging .lane{outline:1px dashed var(--line); outline-offset:1px}
-  body.dragging .lane.over{outline:1.5px solid var(--accent); background:rgba(227,168,87,.07)}
-  body.dragging .trash{border-color:var(--warn); color:var(--warn); min-height:54px;
-                       display:flex; align-items:center; justify-content:center}
-  body.dragging .trash.over{outline-color:var(--warn); background:rgba(217,138,106,.08)}
-  .droptag{
-    position:absolute; z-index:40; pointer-events:none; background:var(--surface-2);
-    border:1px solid var(--accent-dim); color:var(--accent); border-radius:7px;
-    font-size:.72rem; padding:.2rem .5rem; white-space:nowrap; opacity:0;
-    transition:opacity .12s;
-  }
-  .droptag.on{opacity:1}
   .row{
     display:flex; align-items:flex-start; gap:.5rem; padding:.34rem .4rem;
-    border-radius:8px; cursor:grab; background:var(--surface);
-    border:1px solid transparent; user-select:none; -webkit-user-select:none;
+    border-radius:8px; background:var(--surface);
+    border:1px solid transparent;
   }
   .main .card .row:hover, .rail .card .row:hover{border-color:var(--line); background:var(--surface-2)}
-  .row.dragging{opacity:.4}
-  .row.ghost-row{background:var(--surface-2); border:1px dashed var(--accent-dim)}
   .row .cb{
     flex:none; width:17px; height:17px; border:1.5px solid var(--faint); border-radius:5px;
     margin-top:.1rem; display:flex; align-items:center; justify-content:center;
@@ -260,7 +246,6 @@
     background:color-mix(in srgb,var(--tc,#888) 14%,transparent)}
   .t-urgent{--tc:var(--warn)} .t-home{--tc:#7fb88a} .t-phone{--tc:#7fb4c8}
   .t-call{--tc:#b7a0dc}
-  .trash.hot{border-color:var(--warn); color:var(--warn)}
 
   /* ── group headings inside a card ─────── */
   .grp{display:flex; align-items:baseline; gap:.4rem; padding:.45rem .1rem .1rem;
@@ -279,11 +264,33 @@
   .adder::placeholder{color:var(--faint)}
   .empty{color:var(--faint); font-size:.78rem; padding:.5rem .4rem}
 
-  /* ── trash ────────────────────────────── */
-  .trash{
-    border:1px dashed var(--line); border-radius:11px; color:var(--faint);
-    font-size:.74rem; text-align:center; padding:.5rem; min-height:38px;
+  /* ── move sheet ───────────────────────── */
+  .mvscrim{position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:40;
+           opacity:0; pointer-events:none; transition:opacity .2s}
+  .mvscrim.open{opacity:1; pointer-events:auto}
+  .mv{
+    display:flex; flex-direction:column; gap:.1rem; position:fixed; z-index:41;
+    top:50%; left:50%; transform:translate(-50%,-50%) scale(.97);
+    width:min(440px,92vw); max-height:80dvh; overflow-y:auto;
+    background:var(--bg-2); border:1px solid var(--line); border-radius:16px;
+    padding:.8rem; opacity:0; pointer-events:none; visibility:hidden;
+    transition:opacity .2s, transform .2s, visibility .2s;
   }
+  .mv.open{opacity:1; pointer-events:auto; visibility:visible;
+           transform:translate(-50%,-50%) scale(1)}
+  .mv .mvt{color:var(--muted); font-size:.82rem; padding:.2rem .5rem .6rem;
+           border-bottom:1px solid var(--line); margin-bottom:.3rem}
+  .mv .mvsec{font-size:.62rem; font-weight:700; letter-spacing:.08em;
+             text-transform:uppercase; color:var(--faint);
+             padding:.75rem .6rem .25rem}
+  .mv button{background:none; border:0; color:var(--ink); font:inherit;
+             text-align:left; padding:.65rem .6rem; min-height:42px;
+             border-radius:9px}
+  .mv button:hover, .mv button:active{background:var(--surface-2)}
+  .mv button .sub{display:block; font-family:var(--mono); font-size:.62rem;
+                  color:var(--faint); margin-top:.1rem}
+  .mv .danger{color:var(--warn)}
+  .mv .cancel{color:var(--faint)}
 
   /* ── toast + sheet ────────────────────── */
   .toast{
@@ -332,12 +339,8 @@
   }
   .savebar span{font-size:.78rem; color:var(--muted)}
 
-  /* ── phone move sheet ─────────────────── */
-  .mvscrim, .mv{display:none}
-  .rowacts .mvb{display:none}
   @media (hover:none){
     .rowacts{opacity:1}
-    .row:not(.static){-webkit-touch-callout:none; touch-action:manipulation}
     .row [contenteditable]{-webkit-user-select:text; user-select:text}
   }
 
@@ -377,24 +380,15 @@
     .row{min-height:44px; padding:.3rem .4rem}
     .rowacts{gap:.1rem}
     .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
-    .rowacts .mvb{display:inline-block}
     .rowacts button:not(.mvb):not(.x){display:none}
     input, textarea, [contenteditable]{font-size:16px}
     .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
     .toast{bottom:calc(5.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
-    .mvscrim{display:block; position:fixed; inset:0; background:rgba(4,8,7,.6); z-index:40;
-             opacity:0; pointer-events:none; transition:opacity .2s}
-    .mvscrim.open{opacity:1; pointer-events:auto}
-    .mv{display:flex; flex-direction:column; gap:.15rem; position:fixed; left:0; right:0; bottom:0; z-index:41;
-        background:var(--bg-2); border-top:1px solid var(--line); border-radius:18px 18px 0 0;
-        padding:.8rem .8rem calc(.8rem + env(safe-area-inset-bottom,0px)); max-height:80dvh; overflow-y:auto;
-        transform:translateY(105%); transition:transform .22s}
+    .mv{top:auto; left:0; right:0; bottom:0; transform:translateY(105%);
+        width:auto; border-radius:18px 18px 0 0;
+        padding:.8rem .8rem calc(.8rem + env(safe-area-inset-bottom,0px))}
     .mv.open{transform:none}
-    .mv .mvt{color:var(--muted); font-size:.82rem; padding:.2rem .5rem .6rem; border-bottom:1px solid var(--line); margin-bottom:.3rem}
-    .mv button{background:none; border:0; color:var(--ink); font:inherit; text-align:left; padding:.8rem .6rem;
-               min-height:48px; border-radius:10px}
-    .mv button:active{background:var(--surface-2)}
-    .mv .danger{color:var(--warn)} .mv .cancel{color:var(--faint)}
+    .mv button{min-height:48px; padding:.8rem .6rem}
   }
 </style>
 </head>
@@ -474,7 +468,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-<script src="sortable.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -521,7 +514,7 @@
   // Board edits (/move, /check) are NOT sent one by one: they queue here and
   // go out together when you press Save (POST /batch) — one commit per note
   // instead of one per action. The caller gets an instant synthetic "ok", so
-  // every existing code path (drag, tick, rename, delete, undo) is unchanged.
+  // every existing code path (move, tick, rename, delete, undo) is unchanged.
   const BATCHED = new Set(["/move","/check"]);
   let queue = [];
   function api(path, opts){
@@ -616,8 +609,8 @@
   const ROUTE_LABEL = { daily:"stays", recurring:"stays", project:"→ project",
                         today:"→ future", misc:"→ future" };
 
-  /** One draggable line. `addr` is the pane address it currently lives at;
-   *  it rides on the element so a drop can name both ends. */
+  /** One task line. `addr` is the pane address it currently lives at, so
+   *  its actions can name the source without re-deriving it from the view. */
   function row(item, addr, opts){
     opts = opts||{};
     const r = el("div","row"+(item.checked?" done":"")+(opts.plain?" plain":""));
@@ -627,7 +620,7 @@
     if(item.project) r.dataset.project = item.project;
     const cb = el("span","cb"); cb.innerHTML = CHECK;
     // Wired on every row, not just the ones that start in the day: a row
-    // dragged into today is not re-rendered any more, so its handler has
+    // moved into today is not re-rendered any more, so its handler has
     // to read the address it has NOW rather than the one it was born with.
     cb.addEventListener("click", e=>{
       e.stopPropagation();
@@ -650,29 +643,35 @@
     if(opts.src) tx.append(el("span","badge src", opts.src));
     const acts = el("div","rowacts");
     const ed = el("button",null,"✎"); ed.title="Edit"; ed.addEventListener("click", ()=>edit(r, tx, item, addr));
-    const sc = el("button",null,"◷"); sc.title="Schedule for a date";
-    sc.addEventListener("click", ()=>pickDate(t=>{
-      const a = JSON.parse(r.dataset.addr);
-      move(r.dataset.text, a, {pane:"future", date:t}, r.dataset.project,
-           null, null, r).then(ok=>{ if(ok) r.remove(); });
-    }));
-    acts.append(ed, sc);
-    if(!item.checked){
-      const mb = el("button","mvb","⋯"); mb.title = "Move, schedule, edit…";
-      mb.addEventListener("click", e=>{ e.stopPropagation(); openMove(r, acts); });
-      acts.prepend(mb);
+    acts.append(ed);
+    // Review is long-term storage, not a worklist: a saved restaurant has
+    // no schedule and no move action, only rename/remove.
+    if(!opts.storage){
+      const sc = el("button",null,"◷"); sc.title="Schedule for a date";
+      sc.addEventListener("click", ()=>pickDate(t=>{
+        const a = JSON.parse(r.dataset.addr);
+        move(r.dataset.text, a, {pane:"future", date:t}, r.dataset.project,
+             null, null, r).then(ok=>{ if(ok) r.remove(); });
+      }));
+      acts.append(sc);
+      if(!item.checked){
+        const mv = el("button","mvb","⇢"); mv.title = "Move, schedule, edit…";
+        mv.addEventListener("click", e=>{ e.stopPropagation(); openMove(r, item); });
+        acts.prepend(mv);
+      }
     }
     // A completed line in the month file is the record, not a worklist
-    // item — there is nothing to drop, so no × on it.
+    // item — there is nothing to remove, so no × on it.
     if(!item.checked){
-      const rm = el("button","x","×"); rm.title="Delete";
+      const rm = el("button","x","×");
+      rm.title = opts.storage ? "Remove from storage" : "Delete";
       rm.addEventListener("click", ()=>del(r.dataset.text,
         JSON.parse(r.dataset.addr), r.dataset.project, r));
       acts.append(rm);
     }
     r.append(cb, tx, acts);
-    // Backspace drops whatever row the pointer is over, so a pass through
-    // the inbox does not mean aiming at a small × twenty times.
+    // Backspace removes the focused row, so a pass through the inbox does
+    // not mean aiming at a small × twenty times.
     r.tabIndex = 0;
     r.addEventListener("keydown", e=>{
       if(e.key!=="Backspace" && e.key!=="Delete") return;
@@ -684,7 +683,7 @@
   }
 
   /** A checkable row of a pinned list. Lists are not /move panes, so this
-   *  is deliberately simpler than a task row: no drag, no acts — just the
+   *  is deliberately simpler than a task row: no move actions — just the
    *  toggle, which writes through /pin/toggle. */
   function listRow(item, path){
     const r = el("div","row static"+(item.checked?" done":"")+(item.box?"":" plain"));
@@ -712,13 +711,11 @@
     return r;
   }
 
-  /** A drop zone. Every lane declares the address a line dropped into it
-   *  should take; that is the whole protocol between the UI and /move. */
-  function lane(addr, opts){
+  /** A list of rows. Lanes are grouping only now; the move sheet names
+   *  its destination explicitly. */
+  function lane(opts){
     opts = opts||{};
-    const l = el("div","lane"+(opts.mini?" mini":""));
-    l.dataset.addr = JSON.stringify(addr);
-    return l;
+    return el("div","lane"+(opts.mini?" mini":""));
   }
 
   function group(label, cls, count, key){
@@ -836,7 +833,6 @@
     else if(nav==="projects") renderProjectsView(host);
     else renderSourceView(host);
     applyDim();
-    wire(host);
   }
 
   function applyDim(){
@@ -890,7 +886,7 @@
     if(!data.day.exists){
       card.append(el("div","empty",
         viewDate===data.today ? "The 8am run builds this, or build it now."
-                              : "Nothing planned for this day yet. Drop anything here to start it."));
+                              : "Nothing planned for this day yet. Add something below, or use ⇢ to move a task here."));
     }
 
     // one flat lane for the whole day. Blocks went with the block scheduler
@@ -911,13 +907,13 @@
       e.append(el("span","when", ev.all_day?"all day":(ev.start||"")), el("span",null,ev.title));
       card.append(e);
     }
-    const l = lane({pane:"day", date:viewDate});
+    const l = lane();
     for(const f of flat)
       l.append(row(nodeItem(f), {pane:"day", date:viewDate},
                    {tickable:true, route:sections[norm(f.node.text)]}));
     card.append(l);
     const add = el("input","adder");
-    add.placeholder = "add to today…";
+    add.placeholder = viewDate===data.today ? "add to today…" : "add to this day…";
     add.addEventListener("keydown", e=>{
       if(e.key!=="Enter" || !add.value.trim()) return;
       const v = add.value.trim(); add.value="";
@@ -937,7 +933,7 @@
       });
       card.append(g);
       if(isOpen){
-        const l = lane({pane:"day", date:viewDate});
+        const l = lane();
         for(const f of flat) if(f.node.checked)
           l.append(row(nodeItem(f), {pane:"day", date:viewDate}, {}));
         card.append(l);
@@ -952,7 +948,7 @@
       line.append(el("span","capline-t",
         "Today's cap is "+(data.day.cap||"—")
         +(over ? " · "+planned+" planned ("+over+" over, commitments first)" : "")
-        +". Drag a task above the line to plan it"));
+        +". Use ⇢ on a task to plan it for today"));
       const pm = el("button","pullbtn","Pull 3 more"); pm.id="pullBtn";
       pm.addEventListener("click",doMore);
       line.append(pm);
@@ -961,17 +957,8 @@
     }
     host.append(card);
 
-    // what is waiting to be planned: the drag source for the line above
+    // what is waiting to be planned: the backlog above
     if(viewDate===data.today) host.append(renderWaiting());
-
-    // The strip is NOT a Sortable list, and that is the whole point. It is
-    // an always-empty, full-width target, and Sortable's empty-list
-    // detection would let it claim drops aimed at small lanes on the other
-    // side of the screen. It is hit-tested against the pointer at release
-    // instead, so it can only catch what is actually over it.
-    const t = el("div","trash","drag here to delete");
-    t.id = "trash";
-    host.append(t);
   }
 
   function renderWaiting(){
@@ -991,7 +978,7 @@
     const pc = navCounts().priorities;
     const pk = "w:priorities";
     card.append(group("priorities", null, pc, pk));
-    const pl = lane({pane:"priorities"}, {mini:true});
+    const pl = lane({mini:true});
     if(!collapsed.has(pk)){
       for(const p of data.priorities.projects||[])
         for(const t of p.tasks)
@@ -1007,7 +994,7 @@
     if(!collapsed.has(fk))
       for(const d of (data.future||[])){
         if(!d.tasks.length) continue;
-        const l = lane({pane:"future", date:d.date}, {mini:true});
+        const l = lane({mini:true});
         for(const t of d.tasks)
           l.append(row(t, {pane:"future", date:d.date}, {src:"future · "+fmtD(d.date)}));
         card.append(l);
@@ -1016,7 +1003,7 @@
     // inbox
     const ik = "w:inbox";
     card.append(group("inbox", null, data.inbox.length, ik));
-    const il = lane({pane:"inbox"}, {mini:true});
+    const il = lane({mini:true});
     if(!collapsed.has(ik))
       for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {src:"inbox"}));
     if(!data.inbox.length) il.append(el("div","empty","clear"));
@@ -1044,8 +1031,7 @@
                         d.tasks.length, key);
         card.append(g);
         // The lane is rendered even when the group is collapsed, just empty.
-        // A heading you can see is a heading you can drop on.
-        const l = lane({pane:"future", date:d.date}, {mini:true});
+        const l = lane({mini:true});
         if(!collapsed.has(key))
           for(const t of d.tasks) l.append(row(t, {pane:"future", date:d.date}, {}));
         card.append(l);
@@ -1057,7 +1043,7 @@
       const ih = el("div","card-head");
       ih.append(el("span",null,"inbox"), el("span","n", String(data.inbox.length)));
       card.append(ih);
-      const il = lane({pane:"inbox"});
+      const il = lane();
       for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {}));
       if(!data.inbox.length) il.append(el("div","empty","clear — capture with the bar above"));
       card.append(il);
@@ -1070,19 +1056,35 @@
     }
     if(nav==="aar"){
       const ah = el("div","card-head");
-      ah.append(el("span",null,"append and review"));
+      ah.append(el("span",null,"review"));
       ah.append(el("span","path", (data.aar.path||"").split("/").pop()));
       card.append(ah);
+      const ri = el("div","intro");
+      ri.append("Long-term storage: restaurants, places to go, things to watch. ",
+        "These are plain bullets, not tasks — /daily never reads them.");
+      card.append(ri);
       for(const c of data.aar.categories||[]){
         const key = "a:"+c.category;
         const isOpen = c.open ? !collapsed.has(key) : collapsed.has(key);
         const g = group(c.category, null, c.items.length, key);
         g.querySelector(".chev").textContent = isOpen? "▾" : "▸";
         card.append(g);
-        const l = lane({pane:"aar", category:c.category}, {mini:true});
+        const l = lane({mini:true});
         if(isOpen)
-          for(const it of c.items) l.append(row(it, {pane:"aar", category:c.category}, {plain:true}));
+          for(const it of c.items)
+            l.append(row(it, {pane:"aar", category:c.category},
+                         {plain:true, storage:true}));
         card.append(l);
+        if(isOpen){
+          const add = el("input","adder");
+          add.placeholder = "save something in "+c.category.toLowerCase()+"…";
+          add.addEventListener("keydown", e=>{
+            if(e.key!=="Enter" || !add.value.trim()) return;
+            const v = add.value.trim(); add.value="";
+            move(v, {pane:"inbox"}, {pane:"aar", category:c.category});
+          });
+          card.append(add);
+        }
       }
       host.append(card);
       return;
@@ -1092,7 +1094,7 @@
   // ── render: grooming ───────────────────
   // Location is the state. `## To groom` is the queue; `## Someday` is parked
   // and stays out of the sidebar count. A task keeps its project badge when
-  // it was parked nested under a project bullet, so dragging it back out is
+  // it was parked nested under a project bullet, so moving it back out is
   // how it becomes ready.
   function renderGroomingView(host){
     const g = data.grooming || {path:"", exists:false, sections:[]};
@@ -1104,7 +1106,7 @@
     const gi = el("div","intro");
     gi.append("Park anything that is not ready to start. Only ",
       el("code",null,"## To groom"), " is queued; ",
-      el("code",null,"## Someday"), " is parked. Drag a task out (or open ⋯) ",
+      el("code",null,"## Someday"), " is parked. Use ⇢ on a task to move it out ",
       "when it is ready — /daily never reads this note.");
     card.append(gi);
     if((data.missing||[]).includes("grooming"))
@@ -1113,7 +1115,7 @@
     for(const s of g.sections||[]){
       const key = "g:"+s.name;
       card.append(group(s.name, null, s.tasks.length, key));
-      const l = lane({pane:"grooming", category:s.name}, {mini:true});
+      const l = lane({mini:true});
       if(!collapsed.has(key)){
         for(const t of s.tasks)
           l.append(row(t, {pane:"grooming", category:s.name,
@@ -1226,14 +1228,14 @@
           pc.append(ph);
           const meta = [];
           meta.push(p.tasks.length ? "next: "+p.tasks[0].text
-                                   : "no next action — add one or drop a task here");
+                                   : "no next action — add one or move a task here");
           if(fut.length)
             meta.push("future: "+fut.map(f=>fmtD(f.date)).join(", "));
           pc.append(el("div","projmeta", meta.join(" · ")));
-          const l = lane({pane:pane, project:p.body}, {mini:true});
+          const l = lane({mini:true});
           for(const t of p.tasks)
             l.append(row(t, {pane:pane, project:p.body}, {}));
-          if(!p.tasks.length) l.append(el("div","empty","drop a task here"));
+          if(!p.tasks.length) l.append(el("div","empty","move a task here"));
           pc.append(l);
           const add = el("input","adder");
           add.placeholder = "next action for "+p.display+"…";
@@ -1379,10 +1381,10 @@
         const g = group(p.display, null, p.tasks.length, key);
         g.append(projectMoveBtn(p, pane));
         card.append(g);
-        const l = lane({pane:pane, project:p.body}, {mini:true});
+        const l = lane({mini:true});
         if(!collapsed.has(key)){
           for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
-          if(!p.tasks.length) l.append(el("div","empty","no next action — drop one here"));
+          if(!p.tasks.length) l.append(el("div","empty","no next action — move one here"));
         }
         card.append(l);
       }
@@ -1393,7 +1395,7 @@
                          : "no projects yet"));
     if(d.tasks && d.tasks.length!==undefined){
       card.append(el("div","sub","tasks"));
-      const l = lane({pane:pane}, {mini:true});
+      const l = lane({mini:true});
       for(const t of d.tasks) l.append(row(t, {pane:pane}, {}));
       card.append(l);
     }
@@ -1408,7 +1410,7 @@
         const key = pane+":ideas:"+section;
         card.append(group(section, null, items.length, key));
         if(collapsed.has(key)) continue;
-        const l = lane({pane:pane, ideas:true}, {mini:true});
+        const l = lane({mini:true});
         for(const t of items) l.append(row(t, {pane:pane, ideas:true}, {plain:true}));
         card.append(l);
       }
@@ -1424,7 +1426,7 @@
   function upcoming(){
     const out = (data.future||[]).filter(d=>d.tasks.length || d.date>=data.today);
     const have = new Set(out.map(d=>d.date));
-    // always offer the next few days as drop targets, even when empty
+    // always show the next few days, even when empty
     for(let i=0;i<5;i++){
       const dt = shiftD(data.today, i);
       if(!have.has(dt)) out.push({date:dt, overdue:false, tasks:[]});
@@ -1459,128 +1461,79 @@
     return out;
   }
 
-  // ── drag wiring ────────────────────────
-  function wire(root){
-    (root || document).querySelectorAll(".lane").forEach(l=>{
-      Sortable.create(l, {
-        group:"vault", animation:140, ghostClass:"ghost-row", dragClass:"dragging",
-        emptyInsertThreshold:5, filter:".empty,.adder",
-        delay:180, delayOnTouchOnly:true, touchStartThreshold:8,
-        onStart: ()=>{
-          document.body.classList.add("dragging");
-          PTR_EVENTS.forEach(n=>document.addEventListener(n, trackPointer, true));
-        },
-        onMove: e=>{ markTarget(e.to); },
-        onEnd: e=>{
-          document.body.classList.remove("dragging");
-          PTR_EVENTS.forEach(n=>document.removeEventListener(n, trackPointer, true));
-          const onTrash = overTrash();
-          markTarget(null);
-          if(onTrash){
-            del(e.item.dataset.text, JSON.parse(e.from.dataset.addr||"{}"),
-                 e.item.dataset.project || null, e.item);
-            return;
-          }
-          onDrop(e);
-        }
-      });
-    });
+  function sameDest(a, b){
+    if(!a || !b || a.pane !== b.pane) return false;
+    if(a.pane==="day" || a.pane==="future") return (a.date||"") === (b.date||"");
+    if(a.pane==="priorities" || a.pane==="stalled")
+      return a.project ? sameProj(a.project, b.project) : !b.project;
+    if(a.pane==="grooming" || a.pane==="aar")
+      return (a.category||"") === (b.category||"");
+    return true;
   }
 
-  const PTR_EVENTS = ["pointermove", "mousemove", "dragover", "touchmove"];
-  let ptr = {x:-1, y:-1};
-  function trackPointer(e){
-    const s = (e.touches && e.touches[0]) || e;
-    if(s.clientX == null) return;
-    ptr = {x:s.clientX, y:s.clientY};
-    markTarget(null, true);
-  }
-  function overTrash(){
-    const t = $("trash");
-    if(!t || ptr.x < 0) return false;
-    const b = t.getBoundingClientRect();
-    return ptr.x >= b.left && ptr.x <= b.right && ptr.y >= b.top && ptr.y <= b.bottom;
-  }
-
-  let tagEl = null;
-  function markTarget(l, keep){
-    const t = $("trash");
-    if(t) t.classList.toggle("over", overTrash());
-    if(keep) return;
-    document.querySelectorAll(".lane.over").forEach(x=>x.classList.remove("over"));
-    if(!tagEl){
-      tagEl = el("div","droptag");
-      document.body.append(tagEl);
-    }
-    if(!l){ tagEl.classList.remove("on"); return; }
-    l.classList.add("over");
-    let a = {};
-    try{ a = JSON.parse(l.dataset.addr||"{}"); }catch(err){}
-    tagEl.textContent = laneName(a);
-    const b = l.getBoundingClientRect();
-    tagEl.style.left = Math.round(b.left + 8) + "px";
-    tagEl.style.top = Math.round(b.top + window.scrollY - 22) + "px";
-    tagEl.classList.add("on");
-  }
-  function laneName(a){
-    if(a.pane==="day") return "today";
-    if(a.pane==="future") return "future · " + (a.date? fmtD(a.date) : "");
-    if(a.pane==="inbox") return "inbox";
-    if(a.pane==="priorities") return a.project? a.project.replace(/[\[\]]/g,"") : "priorities";
-    if(a.pane==="stalled") return a.project? a.project.replace(/[\[\]]/g,"") : "stalled";
-    if(a.pane==="aar") return "append and review · " + (a.category||"");
-    if(a.pane==="delete") return "delete";
-    if(a.pane) return a.pane;
-    return "";
-  }
-
-  function onDrop(e){
-    const host = e.item.parentElement || e.to;
-    const from = JSON.parse(e.from.dataset.addr||"{}");
-    const to   = JSON.parse((host && host.dataset.addr) || "{}");
-    if(!to.pane) return;
-    const text = e.item.dataset.text;
-    const project = e.item.dataset.project || null;
-    const samePane = e.from === e.to;
-    if(samePane && e.oldIndex === e.newIndex) return;
-    move(text, from, to, project, e.newIndex, null, e.item);
-  }
-
-  // ── phone: "move to" sheet ─────────────
+  // ── move sheet ───────────────────────────
   function closeMove(){ $("mvSheet").classList.remove("open"); $("mvScrim").classList.remove("open"); }
   $("mvScrim").addEventListener("click", closeMove);
-  function openMove(r, acts){
+  function openMove(r, item){
     const sheet = $("mvSheet"), from = JSON.parse(r.dataset.addr), text = r.dataset.text;
-    const title = r.querySelector(".tx") ? r.querySelector(".tx").firstChild.textContent : text;
+    const project = r.dataset.project || null;
     sheet.innerHTML = "";
-    sheet.append(el("div","mvt", title));
-    const add = (label, fn, cls)=>{
+    sheet.append(el("div","mvt", stripTags(item.text || text)));
+    const add = (label, fn, cls, sub)=>{
       const b = el("button", cls||null, label);
-      b.addEventListener("click", ()=>{ closeMove(); fn(); }); sheet.append(b);
+      if(sub) b.append(el("span","sub", sub));
+      b.addEventListener("click", ()=>{ closeMove(); fn(); });
+      sheet.append(b);
+      return b;
     };
-    add("→ tomorrow", async ()=>{
-      const d = parseD(viewDate); d.setDate(d.getDate()+1);
-      if(await move(text, from, {pane:"future", date:isoD(d)}, r.dataset.project)) r.remove();
-    });
-    // Grooming entry is manual by design: /triage is unchanged, and this is
-    // the phone-friendly equivalent of dragging a row onto the Grooming view.
-    if(from.pane==="grooming"){
-      add("→ today", async ()=>{
-        if(await move(text, from, {pane:"day", date:viewDate}, r.dataset.project)) r.remove();
-      });
-      add("→ priorities", async ()=>{
-        if(await move(text, from, {pane:"priorities"}, r.dataset.project)) r.remove();
-      });
-    } else {
-      add("→ grooming", async ()=>{
-        if(await move(text, from, {pane:"grooming", category:"To groom"}, r.dataset.project)) r.remove();
-      });
-    }
-    const hit = lbl => [...acts.children].find(b=>b.textContent===lbl);
-    if(hit("✎")) add("✎ rename", ()=>hit("✎").click());
-    if(hit("◷")) add("◷ schedule for a date…", ()=>hit("◷").click());
-    if(hit("×")) add("× delete", ()=>hit("×").click(), "danger");
-    add("cancel", ()=>{}, "cancel");
+    const section = label => sheet.append(el("div","mvsec", label));
+    const go = dest => move(text, from, dest, project, null, null, r)
+                          .then(ok => { if(ok) r.remove(); });
+    const off = dest => !sameDest(from, dest);
+
+    if(off({pane:"day", date:data.today}))
+      add("Today", ()=>go({pane:"day", date:data.today}), null, fmtD(data.today));
+    if(off({pane:"future", date:shiftD(data.today,1)}))
+      add("Tomorrow", ()=>go({pane:"future", date:shiftD(data.today,1)}),
+          null, fmtD(shiftD(data.today,1)));
+    add("Pick a date…", ()=>pickDate(t=>go({pane:"future", date:t})),
+        null, "future days");
+    if(off({pane:"inbox"})) add("Inbox", ()=>go({pane:"inbox"}));
+
+    section("Priorities");
+    if(off({pane:"priorities"}))
+      add("Tasks (no project)", ()=>go({pane:"priorities"}));
+    for(const p of data.priorities.projects||[])
+      if(off({pane:"priorities", project:p.body}))
+        add(p.display, ()=>go({pane:"priorities", project:p.body}), null,
+            p.tasks.length ? p.tasks.length+" next" : "no next action");
+
+    section("Stalled");
+    if(off({pane:"stalled"}))
+      add("Tasks (no project)", ()=>go({pane:"stalled"}));
+    for(const p of data.stalled.projects||[])
+      if(off({pane:"stalled", project:p.body}))
+        add(p.display, ()=>go({pane:"stalled", project:p.body}), null,
+            p.tasks.length ? p.tasks.length+" next" : "no next action");
+
+    section("Grooming");
+    for(const s of data.grooming.sections||[])
+      if(off({pane:"grooming", category:s.name}))
+        add(s.name, ()=>go({pane:"grooming", category:s.name}), null,
+            s.tasks.length ? s.tasks.length+" parked" : "empty");
+
+    section("Review · long-term storage");
+    for(const c of data.aar.categories||[])
+      if(off({pane:"aar", category:c.category}))
+        add(c.category, ()=>go({pane:"aar", category:c.category}), null,
+            c.items.length ? c.items.length+" saved" : "empty");
+
+    section("This task");
+    add("✎ Rename", ()=>edit(r, r.querySelector(".tx"), item, from));
+    add("◷ Schedule for a date…", ()=>pickDate(t=>go({pane:"future", date:t})),
+        null, "future days");
+    if(!item.checked) add("× Delete", ()=>del(text, from, project, r), "danger");
+    add("Cancel", ()=>{}, "cancel");
     $("mvScrim").classList.add("open"); sheet.classList.add("open");
   }
 
@@ -1735,7 +1688,8 @@
     if(to.pane==="inbox") return "back to the inbox";
     if(to.pane==="priorities") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to priorities";
     if(to.pane==="stalled") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to the stalled list";
-    if(to.pane==="aar") return "filed under "+to.category;
+    if(to.pane==="grooming") return "parked in "+to.category;
+    if(to.pane==="aar") return "saved to review · "+to.category;
     if(to.pane==="delete") return "deleted";
     if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
     return "moved";
@@ -1973,7 +1927,7 @@
     if(e.key==="ArrowLeft"){ viewDate=shiftD(viewDate,-1); nav="today"; refresh(); }
     if(e.key==="ArrowRight"){ viewDate=shiftD(viewDate,1); nav="today"; refresh(); }
     if(e.key==="r"){ refresh(); }
-    if(e.key==="Escape"){ closeSheets(); closeDrawer(); }
+    if(e.key==="Escape"){ closeSheets(); closeMove(); closeDrawer(); }
   });
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden || !data) return;
