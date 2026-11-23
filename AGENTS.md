@@ -78,7 +78,7 @@ Endpoints this app consumes (auth: `Authorization: Bearer <token>`):
 | `GET /context` | capture Today tab | live calendar + weather (parallel with /today) |
 | `GET /list`, `POST /list/check` | outside tab + pins | standing lists, cross-file tick |
 | `GET /projects` | project picker | `Top Projects:` bullets |
-| `POST /check`, `/more`, `/rough` | Today actions | toggle, top-up, cut back |
+| `POST /check` | Today actions | toggle |
 | `GET /board`, `POST /move`, `/pin/*`, `/projects/add`, `/stalled/projects/add`, `/project/task`, `/project/move` | dashboard + PWA | one-round-trip panes, moves, pin edits, project creation/moves |
 
 Behavioral truth for these lives in `../cloudrun_obsidian_writer/` (see

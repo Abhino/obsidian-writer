@@ -167,19 +167,7 @@
   .rail-head .rail-side{margin-left:auto; font-family:var(--mono); font-size:.66rem;
                         letter-spacing:0; text-transform:none; color:var(--muted); font-weight:500}
 
-  /* the dashed planning line + its green pull pill */
-  .capline{display:flex; align-items:center; gap:.7rem; margin:.55rem 0 .2rem}
-  .capline .rule{flex:1; border-top:1px dashed var(--accent-dim)}
-  .capline-t{font-size:.72rem; color:var(--accent); text-align:center}
-  .pullbtn{
-    background:none; border:1px solid var(--ok); color:var(--ok); font:inherit;
-    font-size:.76rem; font-weight:600; padding:.3rem .75rem; border-radius:9px; cursor:pointer;
-  }
-  .pullbtn:hover{background:color-mix(in srgb,var(--ok) 12%,transparent)}
-  .pullbtn:disabled{opacity:.45; cursor:default}
-  .capover{font-family:var(--mono); font-size:.68rem; color:var(--warn)}
-
-  /* ── projects + grooming ─────────────── */
+  /* ── projects ─────────────── */
   .projcard{
     border:1px solid var(--line); border-radius:11px; padding:.45rem .55rem .5rem;
     margin:.4rem 0; background:var(--bg-2);
@@ -411,7 +399,6 @@
       <span class="dot" id="dot"></span>
       <span class="status-txt" id="statusTxt">—</span>
       <button class="ghost" id="refreshBtn" title="Save and reload">↻</button>
-      <button class="ghost" id="roughBtn" title="Rough night: keep the first 3 tasks today, send the rest back where they came from">rough night</button>
       <button class="ghost" id="gearBtn" aria-label="Settings">⚙</button>
     </div>
   </header>
@@ -424,7 +411,6 @@
       <button class="navitem" data-nav="priorities"><span>Priorities</span><span class="n"></span></button>
       <button class="navitem" data-nav="projects"><span>Projects</span><span class="n"></span></button>
       <button class="navitem" data-nav="future"><span>Future days</span><span class="n"></span></button>
-      <button class="navitem" data-nav="grooming"><span>Grooming</span><span class="n"></span></button>
       <button class="navitem" data-nav="stalled"><span>Stalled</span><span class="n"></span></button>
       <button class="navitem" data-nav="aar"><span>Review</span><span class="n"></span></button>
       <div class="side-sec">tags</div>
@@ -748,11 +734,6 @@
       projects: (data.priorities.projects||[]).filter(p=>p.tasks.length).length
                 + (data.stalled.projects||[]).filter(p=>p.tasks.length).length,
       future: (data.future||[]).reduce((a,d)=>a+d.tasks.length,0),
-      // Only the queue counts. `## Someday` is deliberately parked — it is
-      // visible in the view but never added to the number that nags.
-      grooming: ((data.grooming&&data.grooming.sections)||[])
-                .filter(s=>s.name.trim().toLowerCase()==="to groom")
-                .reduce((a,s)=>a+s.tasks.length,0),
       stalled: (data.stalled.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
                + (data.stalled.ideas||[]).length,
       aar: (data.aar.categories||[]).reduce((a,c)=>a+c.items.length,0),
@@ -768,8 +749,6 @@
     (function w(ns){ for(const n of ns||[]){ bump(n.text); w(n.children); } })(data.day.tasks||[]);
     for(const t of data.inbox) bump(t.text);
     for(const d of data.future||[]) for(const t of d.tasks) bump(t.text);
-    for(const s of (data.grooming&&data.grooming.sections)||[])
-      for(const t of s.tasks) bump(t.text);
     for(const src of ["priorities","stalled"]){
       for(const p of data[src].projects||[]){ bump(p.display); for(const t of p.tasks) bump(t.text); }
       for(const t of data[src].tasks||[]) bump(t.text);
@@ -781,7 +760,7 @@
   // ── sidebar ────────────────────────────
   function renderSide(){
     const c = navCounts();
-    for(const k of ["today","inbox","priorities","projects","future","grooming","stalled","aar"]){
+    for(const k of ["today","inbox","priorities","projects","future","stalled","aar"]){
       const n = document.querySelector('.navitem[data-nav="'+k+'"] .n');
       if(n) n.textContent = String(c[k]);
     }
@@ -831,7 +810,6 @@
     const host = $("main"); host.innerHTML = "";
     if(nav==="today") renderDay(host);
     else if(nav==="list") renderListView(host);
-    else if(nav==="grooming") renderGroomingView(host);
     else if(nav==="projects") renderProjectsView(host);
     else renderSourceView(host);
     applyDim();
@@ -867,13 +845,9 @@
       if(n.box){ n.checked? done++ : open++; } w(n.children); } })(data.day.tasks||[]);
     const sum = el("div","daysum");
     const planned = done+open;
-    const cap = data.day.cap||0;
-    const over = cap && planned>cap ? planned-cap : 0;
     sum.append(el("span",null, data.day.exists
       ? done+" of "+planned+" done · "+waitingCount()+" waiting"
       : "not built yet"));
-    if(over) sum.append(el("span","capover",
-      "+"+over+" over cap — dated commitments land first"));
     if(data.day.exists && done+open){
       const pr = el("div","prog");
       for(let i=0;i<Math.min(done+open,10);i++) pr.append(el("i", i<done?"f":null));
@@ -892,9 +866,9 @@
     }
 
     // one flat lane for the whole day. Blocks went with the block scheduler
-    // server-side — the day file's own order is the plan now, and the cap
-    // line below is the only budget. Events (all-day AND timed) still show
-    // above the lane, because appointments are the fixed frame around it.
+    // server-side — the day file's own order is the plan now. Events (all-day
+    // AND timed) still show above the lane, because appointments are the
+    // fixed frame around it.
     const sections = taskIndex();
     const flat = [];
     (function walk(nodes, project){
@@ -942,21 +916,6 @@
       }
     }
 
-    // the planning line: the cap, and the pull-more pill. Visible for any
-    // built today — topping up mid-day is allowed, not just at zero.
-    if(data.day.exists && viewDate===data.today){
-      const line = el("div","capline");
-      line.append(el("span","rule"));
-      line.append(el("span","capline-t",
-        "Today's cap is "+(data.day.cap||"—")
-        +(over ? " · "+planned+" planned ("+over+" over, commitments first)" : "")
-        +". Use ⇢ on a task to plan it for today"));
-      const pm = el("button","pullbtn","Pull 3 more"); pm.id="pullBtn";
-      pm.addEventListener("click",doMore);
-      line.append(pm);
-      line.append(el("span","rule"));
-      card.append(line);
-    }
     host.append(card);
 
     // what is waiting to be planned: the backlog above
@@ -1091,50 +1050,6 @@
       host.append(card);
       return;
     }
-  }
-
-  // ── render: grooming ───────────────────
-  // Location is the state. `## To groom` is the queue; `## Someday` is parked
-  // and stays out of the sidebar count. A task keeps its project badge when
-  // it was parked nested under a project bullet, so moving it back out is
-  // how it becomes ready.
-  function renderGroomingView(host){
-    const g = data.grooming || {path:"", exists:false, sections:[]};
-    const card = el("div","card day");
-    const head = el("div","dayhead");
-    head.append(el("h1",null,"Grooming"));
-    if(g.path) head.append(el("span","daysub", g.path.split("/").pop()));
-    card.append(head);
-    const gi = el("div","intro");
-    gi.append("Park anything that is not ready to start. Only ",
-      el("code",null,"## To groom"), " is queued; ",
-      el("code",null,"## Someday"), " is parked. Use ⇢ on a task to move it out ",
-      "when it is ready — /daily never reads this note.");
-    card.append(gi);
-    if((data.missing||[]).includes("grooming"))
-      card.append(el("div","warnbar",
-        "not created yet — the first thing you park here creates "+g.path));
-    for(const s of g.sections||[]){
-      const key = "g:"+s.name;
-      card.append(group(s.name, null, s.tasks.length, key));
-      const l = lane({mini:true});
-      if(!collapsed.has(key)){
-        for(const t of s.tasks)
-          l.append(row(t, {pane:"grooming", category:s.name,
-                           project:t.project||null}, {}));
-        if(!s.tasks.length) l.append(el("div","empty","nothing parked"));
-      }
-      card.append(l);
-      const add = el("input","adder");
-      add.placeholder = "park something in "+s.name.toLowerCase()+"…";
-      add.addEventListener("keydown", e=>{
-        if(e.key!=="Enter" || !add.value.trim()) return;
-        const v = add.value.trim(); add.value="";
-        move(v, {pane:"inbox"}, {pane:"grooming", category:s.name});
-      });
-      card.append(add);
-    }
-    host.append(card);
   }
 
   // ── render: projects ───────────────────
@@ -1456,8 +1371,6 @@
     })(data.day.tasks||[]);
     for(const t of data.inbox) add(t.text, "the inbox");
     for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
-    for(const s of (data.grooming&&data.grooming.sections)||[])
-      for(const t of s.tasks) add(t.text, "grooming");
     for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
       for(const p of src[1].projects||[]) for(const t of p.tasks) add(t.text, src[0]);
     return out;
@@ -1468,7 +1381,7 @@
     if(a.pane==="day" || a.pane==="future") return (a.date||"") === (b.date||"");
     if(a.pane==="priorities" || a.pane==="stalled")
       return a.project ? sameProj(a.project, b.project) : !b.project;
-    if(a.pane==="grooming" || a.pane==="aar")
+    if(a.pane==="aar")
       return (a.category||"") === (b.category||"");
     return true;
   }
@@ -1517,12 +1430,6 @@
       if(off({pane:"stalled", project:p.body}))
         add(p.display, ()=>go({pane:"stalled", project:p.body}), null,
             p.tasks.length ? p.tasks.length+" next" : "no next action");
-
-    section("Grooming");
-    for(const s of data.grooming.sections||[])
-      if(off({pane:"grooming", category:s.name}))
-        add(s.name, ()=>go({pane:"grooming", category:s.name}), null,
-            s.tasks.length ? s.tasks.length+" parked" : "empty");
 
     section("Review · long-term storage");
     for(const c of data.aar.categories||[])
@@ -1695,7 +1602,6 @@
     if(to.pane==="inbox") return "back to the inbox";
     if(to.pane==="priorities") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to priorities";
     if(to.pane==="stalled") return to.project? "added to "+to.project.replace(/[\[\]]/g,"") : "sent to the stalled list";
-    if(to.pane==="grooming") return "parked in "+to.category;
     if(to.pane==="aar") return "saved to review · "+to.category;
     if(to.pane==="delete") return "deleted";
     if(to.project) return "added to "+to.project.replace(/[\[\]]/g,"");
@@ -1761,8 +1667,6 @@
     (function w(ns){ for(const n of ns||[]){ if(n.text) push(n.text,"today","today"); w(n.children); } })(data.day.tasks||[]);
     for(const t of data.inbox) push(t.text,"inbox","inbox");
     for(const d of data.future||[]) for(const t of d.tasks) push(t.text,"future · "+fmtD(d.date),"future");
-    for(const s of (data.grooming&&data.grooming.sections)||[])
-      for(const t of s.tasks) push(t.text,"grooming · "+s.name,"grooming");
     for(const src of ["priorities","stalled"]){
       for(const p of data[src].projects||[]){
         push(p.display, src, src);
@@ -1832,21 +1736,6 @@
     }catch(e){ toastBad("couldn't build the day"); }
     refresh();
   }
-  async function doMore(){
-    if(busy) return;
-    busy = true; setConn(null,"pulling…");
-    try{
-      const r = await rawFetch("/more", {method:"POST", body:"{}"});
-      const j = await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error(j.error || r.status);
-      if(j.reason) toast("nothing to pull");
-      else toast("pulled "+j.added+" · "
-        +[["priorities",j.from_priorities],["projects",j.from_projects],
-          ["future",j.from_future],["inbox",j.from_inbox]]
-          .filter(p=>p[1]).map(p=>p[1]+" "+p[0]).join(", "));
-    }catch(e){ toastBad("couldn't pull more: "+e.message); }
-    finally{ busy=false; refresh(); }
-  }
 
   // ── load ───────────────────────────────
   async function refresh(){
@@ -1867,14 +1756,14 @@
       const b = await get("day");
       data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
         stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]},
-        grooming:{path:"",exists:false,sections:[{name:"To groom",tasks:[]}]}, lists:[], loading:true}, b);
+        lists:[], loading:true}, b);
       fetchedAt = Date.now(); dirty = false;
       setConn("online");
       render();
       ctxP.then(c=>{ if(needCtx) ctxCache[viewDate] = {at:Date.now(), data:c};
         data.context = c; renderRail(); });
       // Stage 2 — everything else, in the background.
-      const rest = await get("inbox,priorities,future,stalled,aar,grooming,lists");
+      const rest = await get("inbox,priorities,future,stalled,aar,lists");
       const myDate = viewDate;
       if(myDate !== viewDate) return;             // you changed day meanwhile
       Object.assign(data, rest, {loading:false, missing:[...(data.missing||[]), ...(rest.missing||[])]});
@@ -1910,19 +1799,6 @@
   $("refreshBtn").addEventListener("click",refresh);
   $("batchBtn").addEventListener("click", async ()=>{ await flush(); });
   $("discardBtn").addEventListener("click", discard);
-  $("roughBtn").addEventListener("click", async ()=>{
-    if(!confirm("Rough night? Keep the first 3 open tasks today and send the rest back where they came from.")) return;
-    if(queue.length){ const ok = await flush(); if(ok===null) return; }
-    setConn(null, "adjusting…");
-    try{
-      const r = await rawFetch("/rough", {method:"POST", body:"{}"});
-      const j = await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error(j.error || r.status);
-      toast("kept "+j.rough.kept+" · held "+j.rough.held+" for later");
-    }catch(e){ toastBad("couldn't: "+e.message); }
-    refresh();
-  });
-
   document.addEventListener("keydown",e=>{
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="k"){
       e.preventDefault(); $("omni").focus(); $("omni").select(); return;

@@ -28,7 +28,6 @@ the vault as it stands; override if you move them.
 | --- | --- |
 | `APPEND_REVIEW_PATH` | `02 Append and Review Note.md` |
 | `STALLED_PATH` | `Stalled, New Project List.md` |
-| `GROOMING_PATH` | `30-Tasks/Grooming.md` |
 | `AAR_OPEN_CATEGORIES` | `India things to do,Restaurants,To Watch` |
 
 Everything else — the priorities note, the inbox, Future Days, the month
@@ -66,39 +65,17 @@ a duplicate, which the next load flags, never a lost task.
 
 The `⇢` button on a task row opens the full destination menu: Today,
 Tomorrow, any Future Days date, Inbox, Priorities, every active or stalled
-project, Grooming sections, and Review categories.
+project, and Review categories.
 
 | Moved to | What is written |
 | --- | --- |
 | Today | under `### Today Tasks` (or `### Project Tasks`, nested under that project's bullet, when it came from one) |
 | a Future Days date | under that date, nested under its project bullet if it has one |
 | a project | a subtask of that project |
-| Grooming | an unchecked bullet under the chosen section, nested under its project when it has one |
 | a Review category | a plain bullet at the top of that category — storage, not a task |
 
 Order still matters in one place: a project's first open subtask is its
 next action. The move menu does not reorder tasks inside a pane.
-
-## Grooming
-
-`30-Tasks/Grooming.md` (override with `GROOMING_PATH`) is a dedicated
-note, not a tag. Location is the state:
-
-```markdown
-## To groom
-- [ ] Read the zoning packet
-- [[Kitchen remodel]]
-	- [ ] Pick a cabinet finish
-## Someday
-- [ ] Learn to sail
-```
-
-Only `## To groom` counts in the sidebar and is the queue. `## Someday`
-is parked: visible in the view, deliberately not in the number, and
-`/daily` never reads either section. Park something with the add line on
-the Grooming view, or `⇢ → Grooming` on any row. Moving a task out (to
-Today, a project, priorities) is what makes it ready. Entry is manual
-only; `/triage` behaviour is unchanged.
 
 ## Projects
 
@@ -155,8 +132,7 @@ that point the screen and the vault disagree.
   send it tomorrow: `stays`, `→ project`, `→ future`.
 - **Type into the day** to add a task straight to it.
 - **`✎`** renames in place, **`◷`** schedules for a date, **`⇢`** moves to
-  any destination: a date, Inbox, Priorities, a project, Grooming, or
-  Review.
+  any destination: a date, Inbox, Priorities, a project, or Review.
 - **Undo** on every move, for five seconds. It is the same call with the
   ends swapped.
 - **Keys**: `←` `→` change day, `r` reloads, `Esc` closes a sheet,
@@ -171,22 +147,11 @@ parallel plus the calendar.
 
 `POST /move` — `{text, new_text?, from, to, position?}`, where an address
 is `{pane, date?, project?, category?}` and `pane` is one of
-`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`, `grooming`. A
+`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`. A
 `block` key is still accepted in `to` for compatibility with older clients
 but is ignored — the day is one flat list now.
 
 `POST /projects/add` — `{name}`; `POST /project/task` — `{project, text}`.
-
-## The cap
-
-Future Days entries dated today or earlier are commitments. `/daily`
-charges them against the cap first and lets all of them land, then fills
-the rest with priorities, project next actions, recurring duties, and
-inbox captures. If the dated work already meets the cap, none of those
-auto-sources pull. Both the day summary and the dashed cap line say how
-many tasks are over, because an over-cap day you planned yourself is a
-fact to show, not a load to hide. `/more` pulls every remaining dated
-commitment first, then tops up to `MORE_TAKE`.
 
 ## Tests
 
