@@ -671,9 +671,11 @@
     }
     r.append(cb, tx, acts);
     // Backspace removes the focused row, so a pass through the inbox does
-    // not mean aiming at a small × twenty times.
+    // not mean aiming at a small × twenty times. Only the row itself
+    // (never its text, which may be mid-edit) counts as a target.
     r.tabIndex = 0;
     r.addEventListener("keydown", e=>{
+      if(e.target !== r) return;
       if(e.key!=="Backspace" && e.key!=="Delete") return;
       if(item.checked) return;
       e.preventDefault();
@@ -1652,11 +1654,16 @@
       if(!save || !after || after===item.text) return render();
       await move(before, addr, addr, r.dataset.project, null, after);
     };
-    tx.addEventListener("keydown", e=>{
+    // Use onkeydown/onblur (not addEventListener) so repeated edits of the
+    // same row don't stack handlers. Stop propagation so keystrokes used to
+    // edit text never reach the row's Backspace/Delete shortcut or the
+    // document's arrow-key navigation.
+    tx.onkeydown = e=>{
+      e.stopPropagation();
       if(e.key==="Enter"){ e.preventDefault(); done(true); }
-      if(e.key==="Escape"){ done(false); }
-    });
-    tx.addEventListener("blur", ()=>done(true));
+      else if(e.key==="Escape"){ e.preventDefault(); done(false); }
+    };
+    tx.onblur = ()=>done(true);
   }
 
   // ── undo ───────────────────────────────
