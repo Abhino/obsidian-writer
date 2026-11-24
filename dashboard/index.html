@@ -1997,7 +1997,7 @@
                            : Promise.resolve(cached.data);
       const b = await get("day");
       data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
-        stalled:{projects:[],items:[],ideas:[]}, aar:{path:"",categories:[]},
+        stalled:{projects:[],items:[]}, aar:{path:"",categories:[]},
         lists:[], loading:true}, b);
       fetchedAt = Date.now(); dirty = false;
       setConn("online");

@@ -469,8 +469,7 @@
     <div class="composer">
   <div class="kindrow" id="kindrow">
     <button data-k="" class="on">inbox</button>
-    <button data-k="project">project</button>
-    <button data-k="action">action</button>
+    <button data-k="project">new project</button>
     <button data-k="entry">entry</button>
     <button data-k="waiting">waiting on</button>
   </div>
@@ -708,10 +707,7 @@
         ts:Date.now(), status:"saving", kind:captureKind }, destBody());
     // kind overrides destination for the new doors
     if(captureKind==="entry"){ item.dest="aar"; item.category="Unsorted"; }
-    if(captureKind==="waiting"){ item.dest="waiting"; }
-    if(captureKind==="action" && composeTarget!=="project"){
-      item.text = "act: "+text;
-    }
+    if(captureKind==="waiting"){ item.text = "wait: "+text; }   // stays in inbox, marked
     session.push(item);
     input.value=""; autosize(); updateSend(); render();
     send(item);
@@ -727,8 +723,6 @@
       b.dest="project"; b.project=item.project; b.top=!!item.top;
     }else if(item.dest==="aar"){
       b.dest="aar"; b.category=item.category||"Unsorted";
-    }else if(item.dest==="waiting"){
-      b.dest="waiting";
     }else{
       b.dest="inbox"; b.target=item.target||cfg.target;
     }
@@ -1380,7 +1374,6 @@
         .forEach(x=>x.classList.toggle("on", x.dataset.k===captureKind));
       // hint text
       const ph = { "":"write a thought…", "project":"a result needing more than one step…",
-        "action":"one thing you can do — start with a verb…",
         "entry":"something to remember, not do…",
         "waiting":"who owes you a decision, and what?" }[captureKind] || "write a thought…";
       input.placeholder = ph;
