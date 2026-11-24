@@ -741,9 +741,29 @@
       aar: (data.aar.categories||[]).reduce((a,c)=>a+c.items.length,0),
     };
   }
-  // the "waiting" number: everything unplanned that today could pull from
+  // Normalized text of every task already on today's plan (open OR done).
+  // /daily deliberately leaves Top Priorities' `Tasks:` lines in place, so
+  // those land on the day AND stay in the priorities note. Without this set
+  // the waiting card counts and lists them a second time.
+  function todayKeys(){
+    const s = new Set();
+    (function w(ns){ for(const n of ns||[]){
+      if(n.box) s.add(norm(n.text));
+      w(n.children);
+    } })(data.day.tasks||[]);
+    return s;
+  }
+  // the "waiting" number: everything unplanned that today could still pull from
   function waitingCount(){
-    return navCounts().inbox + navCounts().priorities + navCounts().future;
+    const keys = todayKeys();
+    let n = 0;
+    for(const t of data.inbox||[]) if(!keys.has(norm(t.text))) n++;
+    for(const p of data.priorities.projects||[])
+      for(const t of p.tasks||[]) if(!keys.has(norm(t.text))) n++;
+    for(const t of data.priorities.tasks||[]) if(!keys.has(norm(t.text))) n++;
+    for(const d of data.future||[])
+      for(const t of d.tasks||[]) if(!keys.has(norm(t.text))) n++;
+    return n;
   }
   function tagCounts(){
     const c={}; TAGS.forEach(t=>c[t]=0);
@@ -1176,7 +1196,8 @@
           pc.append(el("div","projmeta", meta.join(" · ")));
           const l = lane({mini:true});
           for(const t of p.tasks)
-            l.append(row(t, {pane:pane, project:p.body}, {noProj:true}));          if(!p.tasks.length) l.append(el("div","empty","move a task here"));
+            l.append(row(t, {pane:pane, project:p.body}, {noProj:true}));
+          if(!p.tasks.length) l.append(el("div","empty","move a task here"));
           pc.append(l);
           const add = el("input","adder");
           add.placeholder = "next action for "+p.display+"…";
@@ -1324,7 +1345,7 @@
         card.append(g);
         const l = lane({mini:true});
         if(!collapsed.has(key)){
-          for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {}));
+          for(const t of p.tasks) l.append(row(t, {pane:pane, project:p.body}, {noProj:true}));
           if(!p.tasks.length) l.append(el("div","empty","no next action — move one here"));
         }
         card.append(l);
