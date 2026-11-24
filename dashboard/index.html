@@ -620,8 +620,10 @@
     r.dataset.tags = tg.join(" ");
     tg.forEach(t=>{ tx.append(el("span","badge tg t-"+t, "#"+t)); });
     if(item.hint) tx.append(el("span","badge", "~"+fmtMin(item.hint)));
-    if(item.project){
-      const p = el("span","badge proj", item.project.replace(/[\[\]]/g,""));
+    const proj = item.project || (addr && addr.project) || null;
+    if(proj) r.dataset.project = proj;
+    if(proj && !opts.noProj){
+      const p = el("span","badge proj", proj.replace(/[\[\]]/g,""));
       tx.append(p);
     }
     if(routeView && opts.route && ROUTE_LABEL[opts.route])
@@ -935,40 +937,63 @@
         "“"+d.text+"” is live in both "+d.a+" and "+d.b
         +" — they are one task to /check, so ticking one may flip the other"));
 
-    // priorities: projects first, then loose tasks
-    const pc = navCounts().priorities;
+    const keys = todayKeys();
+
+    // priorities: projects first, then loose tasks — skip anything already on today
+    const prioRows = [];
+    for(const p of data.priorities.projects||[])
+      for(const t of p.tasks||[])
+        if(!keys.has(norm(t.text)))
+          prioRows.push({t, p});
+    const loosePrio = (data.priorities.tasks||[]).filter(t=>!keys.has(norm(t.text)));
+    const pc = prioRows.length + loosePrio.length;
     const pk = "w:priorities";
     card.append(group("priorities", null, pc, pk));
     const pl = lane({mini:true});
     if(!collapsed.has(pk)){
-      for(const p of data.priorities.projects||[])
-        for(const t of p.tasks)
-          pl.append(row(t, {pane:"priorities", project:p.body}, {src:"priorities"}));
-      for(const t of data.priorities.tasks||[])
+      for(const {t,p} of prioRows)
+        pl.append(row(Object.assign({}, t, {project:p.body}),
+                      {pane:"priorities", project:p.body}, {src:"priorities"}));
+      for(const t of loosePrio)
         pl.append(row(t, {pane:"priorities"}, {src:"priorities"}));
     }
     card.append(pl);
 
-    // future days: dated groups, flattened into one lane per date
+    // future days: dated groups, flattened into one lane per date — skip already on today
+    const filteredFuture = (data.future||[]).map(d=>({
+      ...d, tasks:(d.tasks||[]).filter(t=>!keys.has(norm(t.text)))
+    }));
+    const fc = filteredFuture.reduce((a,d)=>a+d.tasks.length,0);
     const fk = "w:future";
-    card.append(group("future days", null, navCounts().future, fk));
+    card.append(group("future days", null, fc, fk));
     if(!collapsed.has(fk))
-      for(const d of (data.future||[])){
+      for(const d of filteredFuture){
         if(!d.tasks.length) continue;
         const l = lane({mini:true});
         for(const t of d.tasks)
-          l.append(row(t, {pane:"future", date:d.date}, {src:"future · "+fmtD(d.date)}));
+          l.append(row(t, {pane:"future", date:d.date, project:t.project},
+                      {src:"future · "+fmtD(d.date)}));
         card.append(l);
       }
 
-    // inbox
+    // inbox — skip anything already on today
+    const filteredInbox = (data.inbox||[]).filter(t=>!keys.has(norm(t.text)));
     const ik = "w:inbox";
-    card.append(group("inbox", null, data.inbox.length, ik));
+    card.append(group("inbox", null, filteredInbox.length, ik));
     const il = lane({mini:true});
     if(!collapsed.has(ik))
-      for(const t of data.inbox) il.append(row(t, {pane:"inbox"}, {src:"inbox"}));
-    if(!data.inbox.length) il.append(el("div","empty","clear"));
+      for(const t of filteredInbox)
+        il.append(row(t, {pane:"inbox"}, {src:"inbox"}));
+    if(!filteredInbox.length) il.append(el("div","empty","clear"));
     card.append(il);
+
+    const totalSource = (data.inbox||[]).length
+      + (data.priorities.projects||[]).reduce((a,p)=>a+(p.tasks||[]).length,0)
+      + (data.priorities.tasks||[]).length
+      + (data.future||[]).reduce((a,d)=>a+(d.tasks||[]).length,0);
+    const onToday = totalSource - waitingCount();
+    if(onToday)
+      card.append(el("div","sub", onToday+" already on today’s plan"));
     return card;
   }
 
@@ -1151,8 +1176,7 @@
           pc.append(el("div","projmeta", meta.join(" · ")));
           const l = lane({mini:true});
           for(const t of p.tasks)
-            l.append(row(t, {pane:pane, project:p.body}, {}));
-          if(!p.tasks.length) l.append(el("div","empty","move a task here"));
+            l.append(row(t, {pane:pane, project:p.body}, {noProj:true}));          if(!p.tasks.length) l.append(el("div","empty","move a task here"));
           pc.append(l);
           const add = el("input","adder");
           add.placeholder = "next action for "+p.display+"…";
