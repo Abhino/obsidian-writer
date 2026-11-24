@@ -305,6 +305,13 @@
     .targets button{padding:.15rem .3rem; font-size:.64rem}
   }
   .targets button.on{color:var(--accent); border-color:var(--accent-dim)}
+  .kindrow{display:flex; gap:.35rem; flex-wrap:wrap; padding:.55rem 0 .2rem}
+  .kindrow button{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    font:inherit; font-size:.72rem; padding:.3rem .6rem; border-radius:99px; cursor:pointer;
+  }
+  .kindrow button.on{color:var(--accent); border-color:var(--accent-dim);
+    background:color-mix(in srgb,var(--accent) 12%,transparent)}
   /* the project chip carries the chosen project, so it can outgrow the rest */
   .targets button#tProject{max-width:38vw; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap}
@@ -460,6 +467,13 @@
     </div>
 
     <div class="composer">
+  <div class="kindrow" id="kindrow">
+    <button data-k="" class="on">inbox</button>
+    <button data-k="project">project</button>
+    <button data-k="action">action</button>
+    <button data-k="entry">entry</button>
+    <button data-k="waiting">waiting on</button>
+  </div>
       <div class="field">
         <textarea id="input" rows="1" placeholder="write a thought…" autocomplete="off" autocapitalize="sentences"></textarea>
         <div class="tagrow" id="tagrow"></div>
@@ -548,6 +562,7 @@
   // today/project are addressed by KIND and the backend works out the file
   // (today's month section, or the right bullet in Top Priorities).
   let composeTarget = LS.get("inbox.composeTarget", "inbox");
+  let captureKind = LS.get("inbox.captureKind", "");
   let project  = LS.get("inbox.project", null);   // {body, display}
   let projTop  = LS.get("inbox.projTop", false);  // file as the NEXT action
   let projects = LS.get("inbox.projects", []);    // cached /projects, for offline
@@ -683,10 +698,20 @@
   function capture(){
     let text=input.value.trim();
     if(!text) return;
+    if(captureKind==="project"){
+      // create a new project bullet
+      addProjectFromPWA(false, text); input.value=""; autosize(); updateSend(); return;
+    }
     if(!canSend()){ openProjSheet(); return; }   // project target, no project yet
     const item=Object.assign(
       { id:Date.now()+""+Math.random().toString(36).slice(2,6), text,
-        ts:Date.now(), status:"saving" }, destBody());
+        ts:Date.now(), status:"saving", kind:captureKind }, destBody());
+    // kind overrides destination for the new doors
+    if(captureKind==="entry"){ item.dest="aar"; item.category="Unsorted"; }
+    if(captureKind==="waiting"){ item.dest="waiting"; }
+    if(captureKind==="action" && composeTarget!=="project"){
+      item.text = "act: "+text;
+    }
     session.push(item);
     input.value=""; autosize(); updateSend(); render();
     send(item);
@@ -700,6 +725,10 @@
       b.dest="today";
     }else if(item.dest==="project"){
       b.dest="project"; b.project=item.project; b.top=!!item.top;
+    }else if(item.dest==="aar"){
+      b.dest="aar"; b.category=item.category||"Unsorted";
+    }else if(item.dest==="waiting"){
+      b.dest="waiting";
     }else{
       b.dest="inbox"; b.target=item.target||cfg.target;
     }
@@ -939,9 +968,9 @@
   // Create a project without leaving the phone. The offline queue only
   // stores capture descriptors, so a project creation needs the network —
   // say so instead of silently dropping it.
-  async function addProjectFromPWA(stalled){
+  async function addProjectFromPWA(stalled, nameOverride){
     if(!cfg.url){ showToast("set a backend URL first"); return; }
-    const name=$("projNew").value.trim();
+    const name=(nameOverride||$("projNew").value).trim();
     if(!name) return;
     if(!navigator.onLine){ showToast("add a project when back online"); return; }
     $("projNew").value="";
@@ -1341,6 +1370,21 @@
         return;
       }
       setComposeTarget(t);
+    }));
+  // kind picker: classifies the capture at capture time. "" = plain inbox.
+  document.querySelectorAll("#kindrow button").forEach(b=>
+    b.addEventListener("click",()=>{
+      captureKind = b.dataset.k;
+      LS.set("inbox.captureKind", captureKind);
+      document.querySelectorAll("#kindrow button")
+        .forEach(x=>x.classList.toggle("on", x.dataset.k===captureKind));
+      // hint text
+      const ph = { "":"write a thought…", "project":"a result needing more than one step…",
+        "action":"one thing you can do — start with a verb…",
+        "entry":"something to remember, not do…",
+        "waiting":"who owes you a decision, and what?" }[captureKind] || "write a thought…";
+      input.placeholder = ph;
+      updateSend();
     }));
 
   // returning to the app with Today open → refresh if stale (e.g. after the
