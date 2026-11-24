@@ -184,6 +184,7 @@
   .pill.future{color:var(--accent); border-color:var(--accent-dim)}
   .projhead .addnext{margin-left:auto}
   .projmeta{font-size:.66rem; color:var(--faint); padding:.15rem 0 0}
+  .projfilter{display:flex; gap:.35rem; padding:.15rem 0 .5rem}
   .intro{font-size:.76rem; color:var(--muted); padding:.15rem .1rem .45rem; line-height:1.5}
   .intro code{font-family:var(--mono); font-size:.7rem; color:var(--accent-dim)}
 
@@ -451,6 +452,21 @@
     <input id="dateInput" type="date" />
     <div class="rowb"><button class="save" id="dateSave">Schedule</button></div>
   </div>
+  <div class="scrim" id="cvScrim"></div>
+  <div class="sheet" id="cvSheet" role="dialog" aria-label="Convert to project">
+    <h2>Convert to project</h2>
+    <label for="cvName">Project name</label>
+    <input id="cvName" placeholder="what is this project called?" />
+    <div id="cvHomeWrap">
+      <label>Where</label>
+      <div class="rowb" style="margin-top:.35rem">
+        <button class="ghost mini on" id="cvHomeActive">Active</button>
+        <button class="ghost mini" id="cvHomeStalled">Stalled</button>
+      </div>
+    </div>
+    <p id="cvHint" style="margin:.7rem 0 0;font-size:.68rem;color:var(--faint);line-height:1.45"></p>
+    <div class="rowb"><button class="save" id="cvGo">Convert</button></div>
+  </div>
 
   <div class="toast" id="toast" role="status"></div>
 
@@ -490,6 +506,15 @@
     return o; };
   const stripTags = s => (s||"").replace(TAG_RE," ").replace(/\s+/g," ").trim();
   let tagFilter = "";
+  // Projects view filter: all / active / stalled. Persisted because the
+  // stalled group is where you go to review parked work, and reopening the
+  // board should not silently show every active project again.
+  let projFilter = (()=>{
+    const v = LS.get("board.projFilter", "all");
+    return ["all","active","stalled"].includes(v) ? v : "all";
+  })();
+  let cvCtx = null;          // {text, from, row} for the convert sheet
+  let cvHome = "priorities"; // where a converted task becomes a project
 
   // ── api ────────────────────────────────
   function rawFetch(path, opts){
@@ -733,11 +758,13 @@
       inbox: (data.inbox||[]).length,
       priorities: (data.priorities.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
                   + (data.priorities.tasks||[]).length,
-      projects: (data.priorities.projects||[]).filter(p=>p.tasks.length).length
-                + (data.stalled.projects||[]).filter(p=>p.tasks.length).length,
+      // Projects view shows every project, regardless of whether it has a
+      // next action yet, so the number counts them all too.
+      projects: (data.priorities.projects||[]).length
+                + ((data.stalled&&data.stalled.projects)||[]).length,
       future: (data.future||[]).reduce((a,d)=>a+d.tasks.length,0),
-      stalled: (data.stalled.projects||[]).reduce((a,p)=>a+p.tasks.length,0)
-               + (data.stalled.ideas||[]).length,
+      // Stalled is a loose-task list now; its projects live in Projects.
+      stalled: ((data.stalled&&data.stalled.items)||[]).length,
       aar: (data.aar.categories||[]).reduce((a,c)=>a+c.items.length,0),
     };
   }
@@ -771,11 +798,13 @@
     (function w(ns){ for(const n of ns||[]){ bump(n.text); w(n.children); } })(data.day.tasks||[]);
     for(const t of data.inbox) bump(t.text);
     for(const d of data.future||[]) for(const t of d.tasks) bump(t.text);
-    for(const src of ["priorities","stalled"]){
+    for(const src of ["priorities", "stalled"]){
       for(const p of data[src].projects||[]){ bump(p.display); for(const t of p.tasks) bump(t.text); }
       for(const t of data[src].tasks||[]) bump(t.text);
-      for(const s of data[src].ideas||[]) bump(s.text);
     }
+    // Stalled's loose tasks/ideas all live in `items` now; `ideas` is
+    // still present for an old cached shell but would double-count here.
+    for(const it of (data.stalled&&data.stalled.items)||[]) bump(it.text);
     return c;
   }
 
@@ -1017,6 +1046,73 @@
     return card;
   }
 
+  // ── render: the stalled scratchpad ─────
+  // The note is a MIXED list: projects are explicit `[[wikilinks]]` and live
+  // in the Projects view; everything else is loose work shown here, grouped
+  // by the note's own headings. This is deliberately not a project card —
+  // the old view made every top-level checkbox look like a project.
+  function renderStalledView(host){
+    const d = data.stalled || {};
+    const items = d.items || [];
+    const projects = d.projects || [];
+    const card = el("div","card day");
+    const head = el("div","dayhead");
+    head.append(el("h1",null,"Stalled"));
+    head.append(el("span","path",(d.path||"").split("/").pop()));
+    card.append(head);
+
+    const intro = el("div","intro");
+    intro.append("Loose work from the stalled scratchpad. ",
+      "Projects in this note are ",
+      el("code",null,"[[wikilinks]]"), " and live in the Projects view.");
+    card.append(intro);
+    if(projects.length){
+      const toProj = el("button","ghost mini",
+        projects.length+(projects.length===1?" stalled project":" stalled projects")+" →");
+      toProj.title = "Show the stalled projects";
+      toProj.addEventListener("click", ()=>{
+        projFilter = "stalled"; LS.set("board.projFilter", projFilter);
+        go("projects");
+      });
+      card.append(toProj);
+    }
+
+    if(!items.length)
+      card.append(el("div","empty","nothing loose here — projects are in Projects"));
+
+    const bySection = new Map();
+    for(const it of items){
+      const s = it.section || "stalled";
+      if(!bySection.has(s)) bySection.set(s, []);
+      bySection.get(s).push(it);
+    }
+    for(const [section, list] of bySection){
+      const sk = "st:"+section;
+      card.append(group(section, null, list.length, sk));
+      if(collapsed.has(sk)) continue;
+      const l = lane({mini:true});
+      for(const it of list){
+        const addr = {pane:"stalled", section:it.section||null,
+                      plain:!it.box};
+        const opts = {plain:!it.box};
+        if(it.children)
+          opts.src = it.children+(it.children===1?" sub-item":" sub-items");
+        l.append(row(it, addr, opts));
+      }
+      card.append(l);
+    }
+
+    const add = el("input","adder");
+    add.placeholder = "add a stalled task…";
+    add.addEventListener("keydown", e=>{
+      if(e.key!=="Enter" || !add.value.trim()) return;
+      const v = add.value.trim(); add.value="";
+      move(v, {pane:"inbox"}, {pane:"stalled"});
+    });
+    card.append(add);
+    host.append(card);
+  }
+
   // ── render: a single source view ───────
   const NAV_LABEL = { inbox:"Inbox", priorities:"Priorities", future:"Future days",
                       stalled:"Stalled", aar:"Review" };
@@ -1056,8 +1152,12 @@
       host.append(card);
       return;
     }
-    if(nav==="priorities" || nav==="stalled"){
+    if(nav==="priorities"){
       host.append(projectCard(NAV_LABEL[nav].toLowerCase(), nav, data[nav]));
+      return;
+    }
+    if(nav==="stalled"){
+      renderStalledView(host);
       return;
     }
     if(nav==="aar"){
@@ -1154,10 +1254,20 @@
     card.append(el("div","sub","or park a stalled project"));
     addProjectLine(card, true);
 
+    const fbar = el("div","projfilter");
+    for(const [k,label] of [["all","All"],["active","Active"],["stalled","Stalled"]]){
+      const b = el("button","ghost mini"+(projFilter===k?" on":""), label);
+      b.addEventListener("click", ()=>{
+        projFilter = k; LS.set("board.projFilter", k); render();
+      });
+      fbar.append(b);
+    }
+    card.append(fbar);
+
     const groups = [
       ["active", "priorities", (data.priorities&&data.priorities.projects)||[]],
       ["stalled", "stalled", (data.stalled&&data.stalled.projects)||[]],
-    ];
+    ].filter(([kind])=>projFilter==="all" || projFilter===kind);
     let total = 0;
     for(const [kind, pane, projs] of groups){
       if(!projs.length) continue;
@@ -1218,7 +1328,9 @@
         }
       }
     }
-    if(!total) card.append(el("div","empty","no projects yet — add one above"));
+    if(!total) card.append(el("div","empty",
+      projFilter==="all" ? "no projects yet — add one above"
+                         : "no "+projFilter+" projects"));
     host.append(card);
   }
 
@@ -1418,6 +1530,8 @@
     for(const d of data.future||[]) for(const t of d.tasks) add(t.text, "future days");
     for(const src of [["top priorities",data.priorities],["the stalled list",data.stalled]])
       for(const p of src[1].projects||[]) for(const t of p.tasks) add(t.text, src[0]);
+    for(const it of (data.stalled&&data.stalled.items)||[])
+      add(it.text, "the stalled list");
     return out;
   }
 
@@ -1429,6 +1543,86 @@
     if(a.pane==="aar")
       return (a.category||"") === (b.category||"");
     return true;
+  }
+
+  // ── convert to project ──────────────────
+  // Promotion is deliberately two steps for Today/Inbox/Future: move the
+  // task into a project home first (the existing, tested /move), then
+  // promote it there. If the second step fails the task is parked and
+  // recoverable rather than lost between two notes.
+  function closeConvert(){
+    $("cvScrim").classList.remove("open");
+    $("cvSheet").classList.remove("open");
+    cvCtx = null;
+  }
+  function setCvHome(h){
+    cvHome = h;
+    $("cvHomeActive").classList.toggle("on", h==="priorities");
+    $("cvHomeStalled").classList.toggle("on", h==="stalled");
+  }
+  $("cvScrim").addEventListener("click", closeConvert);
+  $("cvHomeActive").addEventListener("click", ()=>setCvHome("priorities"));
+  $("cvHomeStalled").addEventListener("click", ()=>setCvHome("stalled"));
+  function openConvert(item, addr, row){
+    if(busy){ toast("one at a time — still saving"); return; }
+    cvCtx = {text: item.raw || item.text, from: addr, row: row};
+    const fixed = addr.pane==="priorities" || addr.pane==="stalled";
+    setCvHome(addr.pane==="stalled" ? "stalled" : "priorities");
+    $("cvHomeWrap").style.display = fixed ? "none" : "";
+    $("cvName").value = stripTags(item.text || item.raw || "").trim();
+    $("cvHint").textContent = fixed
+      ? (addr.project ? "This next action leaves its project and becomes a new project."
+                       : "This line becomes a project in place.")
+      : "The task moves into the chosen home first, then becomes a project.";
+    $("cvScrim").classList.add("open");
+    $("cvSheet").classList.add("open");
+    setTimeout(()=>$("cvName").focus(), 30);
+  }
+  $("cvName").addEventListener("keydown", e=>{
+    if(e.key==="Enter"){ e.preventDefault(); convertGo(); }
+    if(e.key==="Escape"){ e.preventDefault(); closeConvert(); }
+  });
+  $("cvGo").addEventListener("click", convertGo);
+  async function convertGo(){
+    if(!cvCtx || busy) return;
+    const name = $("cvName").value.trim();
+    if(!name){ toastBad("give the project a name"); return; }
+    const text = cvCtx.text;
+    let from = cvCtx.from;
+    busy = true; setConn(null,"converting…");
+    try{
+      if(from.pane!=="priorities" && from.pane!=="stalled"){
+        const mv = await rawFetch("/move", {method:"POST",
+          body:JSON.stringify({text:text, from:from, to:{pane:cvHome}})});
+        const mj = await mv.json().catch(()=>({}));
+        if(!mv.ok) throw new Error(mj.error||("HTTP "+mv.status));
+        from = {pane:cvHome};
+        cvCtx.from = from;          // a retry must use the parked address
+      }
+      const r = await rawFetch("/project/from-task", {method:"POST",
+        body:JSON.stringify({text:text, from:from, name:name})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok){
+        if(j.error==="project_exists")
+          throw new Error("a project with that name already exists");
+        if(j.error==="has_children")
+          throw new Error("this task has sub-items — convert its parent instead");
+        if(j.error==="task_not_found"){
+          toastBad("task changed in the vault — refreshing");
+          closeConvert(); busy = false; return refresh();
+        }
+        throw new Error(j.error||("HTTP "+r.status));
+      }
+      closeConvert();
+      toast("converted to "+j.name);
+      setConn("online");
+      await refresh();
+    }catch(err){
+      toastBad("couldn't convert — "+err.message);
+      setConn("offline");
+    }finally{
+      busy = false;
+    }
   }
 
   // ── move sheet ───────────────────────────
@@ -1484,6 +1678,7 @@
 
     section("This task");
     add("✎ Rename", ()=>edit(r, r.querySelector(".tx"), item, from));
+    add("↗ Convert to project…", ()=>openConvert(item, from, r));
     add("◷ Schedule for a date…", ()=>pickDate(t=>go({pane:"future", date:t})),
         null, "future days");
     if(!item.checked) add("× Delete", ()=>del(text, from, project, r), "danger");
@@ -1680,6 +1875,8 @@
   function closeSheets(){
     $("scrim").classList.remove("open");
     $("sheet").classList.remove("open"); $("dateSheet").classList.remove("open");
+    $("cvScrim").classList.remove("open"); $("cvSheet").classList.remove("open");
+    cvCtx = null;
   }
   $("gearBtn").addEventListener("click",openSheet);
   $("scrim").addEventListener("click",closeSheets);
@@ -1800,7 +1997,7 @@
                            : Promise.resolve(cached.data);
       const b = await get("day");
       data = Object.assign({inbox:[], future:[], priorities:{projects:[],tasks:[]},
-        stalled:{projects:[],ideas:[]}, aar:{path:"",categories:[]},
+        stalled:{projects:[],items:[],ideas:[]}, aar:{path:"",categories:[]},
         lists:[], loading:true}, b);
       fetchedAt = Date.now(); dirty = false;
       setConn("online");

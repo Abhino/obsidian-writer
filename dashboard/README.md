@@ -35,9 +35,9 @@ files — comes from the variables already set.
 
 ## How the stalled note is read
 
-`Stalled, New Project List.md` does NOT need labels. The board scans the
-whole note and groups by the nearest heading, so a scratchpad like this
-works as-is:
+`Stalled, New Project List.md` is a **mixed scratchpad**, not a project
+list. It does NOT need labels. The board scans the whole note and groups by
+the nearest heading, so a scratchpad like this works as-is:
 
 ```markdown
 ##### Need to Start Right away
@@ -51,10 +51,35 @@ works as-is:
 - Skydiving
 ```
 
-A top-level `- [ ]` (or `[[wikilink]]`) bullet is a project; a plain bullet
-is an idea; indented bullets are that project's next actions. Labels such
-as `Projects:` and `Ideas:` are still accepted when present. Projects keep
-their source heading in the Projects view.
+Only an explicit `- [[wikilink]]` bullet is a **project**. It and its
+indented checkboxes are shown in the Projects view, under their source
+heading. Everything else is **loose work** shown in the Stalled view:
+
+- `- [ ] text` — a task
+- `- text` — a plain task/idea, shown without a checkbox
+- indented lines — kept as that item's sub-items; the row says how many,
+  and converting the item carries them into the new project
+
+Checked tasks are history and are dropped. The old rule — every top-level
+checkbox was a project — is what made the Stalled view look like a project
+list. It no longer applies.
+
+## Converting a task to a project
+
+`⇢` on any task opens the move sheet. **Convert to project…** asks for a
+project name (prefilled from the task) and:
+
+- in Stalled, rewrites the line in place to `- [[Name]]` — its heading and
+  sub-items stay put;
+- in Priorities, moves a loose task or a next action to a `Top Projects:`
+  bullet;
+- from Today / Inbox / Future, first parks the task in Active or Stalled,
+  then promotes it there.
+
+If a project with that name already exists, the conversion is refused
+rather than merging silently. A next action that has its own sub-items is
+also refused, so nothing is orphaned. Every conversion is visible in the
+Projects view immediately.
 
 ## What a move does
 
@@ -80,10 +105,11 @@ next action. The move menu does not reorder tasks inside a pane.
 ## Projects
 
 The Projects view merges the active `Top Projects:` bullets with the
-stalled list. Each project shows its source (active/stalled), its open
-next-action count, the first unchecked subtask, and how many dated tasks
-are parked for it in Future Days. Two endpoints back the inline add
-lines:
+stalled `[[wikilink]]` projects. Each project shows its source
+(active/stalled), its open next-action count, the first unchecked subtask,
+and how many dated tasks are parked for it in Future Days. The
+**All / Active / Stalled** filter remembers its choice in
+`board.projFilter`. Two endpoints back the inline add lines:
 
 - `POST /projects/add` `{name}` — append `- [[name]]` to Top Projects.
 - `POST /stalled/projects/add` `{name}` — park a project in the stalled note.
@@ -92,6 +118,8 @@ lines:
   list).
 - `POST /project/move` `{name, from, to}` — move a whole project and its
   next actions between `priorities` and `stalled`.
+- `POST /project/from-task` `{text, from, name}` — promote a task or next
+  action into a project (see above).
 
 Both creation endpoints are idempotent; rerunning either never duplicates
 a line. Each project card has a `→ priorities` / `→ stalled` button that
@@ -146,12 +174,14 @@ that point the screen and the vault disagree.
 parallel plus the calendar.
 
 `POST /move` — `{text, new_text?, from, to, position?}`, where an address
-is `{pane, date?, project?, category?}` and `pane` is one of
-`day`, `future`, `inbox`, `priorities`, `stalled`, `aar`. A
-`block` key is still accepted in `to` for compatibility with older clients
-but is ignored — the day is one flat list now.
+is `{pane, date?, project?, category?, section?, plain?}` and `pane` is one
+of `day`, `future`, `inbox`, `priorities`, `stalled`, `aar`. `section` and
+`plain` keep a stalled row inside its heading and keep an idea a plain
+bullet. A `block` key is still accepted in `to` for compatibility with
+older clients but is ignored — the day is one flat list now.
 
-`POST /projects/add` — `{name}`; `POST /project/task` — `{project, text}`.
+`POST /projects/add` — `{name}`; `POST /project/task` — `{project, text}`;
+`POST /project/from-task` — `{text, from, name}`.
 
 ## Tests
 
