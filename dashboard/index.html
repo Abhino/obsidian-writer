@@ -1633,6 +1633,22 @@
     const project = r.dataset.project || null;
     sheet.innerHTML = "";
     sheet.append(el("div","mvt", stripTags(item.text || text)));
+    // filter input for long project lists
+    const filterInput = el("input", null);
+    filterInput.type = "text";
+    filterInput.placeholder = "filter projects…";
+    filterInput.style.cssText = "width:100%;margin:.4rem 0 .6rem;padding:.4rem .6rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:.82rem;";
+    filterInput.addEventListener("input", ()=>{
+      const q = filterInput.value.trim().toLowerCase();
+      sheet.querySelectorAll("button").forEach(b=>{
+        // only filter project buttons (those with a sub span showing next count or "no next action")
+        const sub = b.querySelector(".sub");
+        if(!sub) return;
+        const label = b.textContent.toLowerCase();
+        b.style.display = (!q || label.includes(q)) ? "" : "none";
+      });
+    });
+    sheet.append(filterInput);
     const add = (label, fn, cls, sub)=>{
       const b = el("button", cls||null, label);
       if(sub) b.append(el("span","sub", sub));
@@ -1650,8 +1666,10 @@
     if(off({pane:"future", date:shiftD(data.today,1)}))
       add("Tomorrow", ()=>go({pane:"future", date:shiftD(data.today,1)}),
           null, fmtD(shiftD(data.today,1)));
-    add("Pick a date…", ()=>pickDate(t=>go({pane:"future", date:t})),
-        null, "future days");
+    add("Pick a date…", ()=>pickDate(t=>{
+        if(t === data.today) go({pane:"day", date:t});
+        else go({pane:"future", date:t});
+      }), null, "future days");
     if(off({pane:"inbox"})) add("Inbox", ()=>go({pane:"inbox"}));
 
     section("Priorities");
@@ -1853,6 +1871,10 @@
   function pickDate(cb){
     dateCb = cb;
     const list=$("dateList"); list.innerHTML="";
+    // today first, so "schedule for today" is one tap
+    const todayBtn=el("button",null,fmtD(data.today)+" (today)");
+    todayBtn.addEventListener("click",()=>{ closeSheets(); cb(data.today); });
+    list.append(todayBtn);
     for(let i=1;i<=7;i++){
       const d=shiftD(data.today,i);
       const b=el("button",null,fmtD(d));
