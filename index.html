@@ -1160,7 +1160,23 @@
       const p=el("p"); p.textContent="No list yet for "+fmtDate(d.date)+".";
       const s=el("p"); s.style.fontSize=".78rem"; s.style.color="var(--faint)";
       s.textContent="The daily run builds it each morning.";
-      box.append(g,p,s);
+      const buildBtn=el("button","job"); buildBtn.textContent="build day";
+      buildBtn.addEventListener("click", async ()=>{
+        buildBtn.disabled=true; buildBtn.textContent="building…";
+        try{
+          const r1=await api("/defer",{method:"POST",body:"{}"});
+          const j1=await r1.json().catch(()=>({}));
+          if(!r1.ok) throw new Error(j1.error||("HTTP "+r1.status));
+          const r2=await api("/daily",{method:"POST",body:"{}"});
+          const j2=await r2.json().catch(()=>({}));
+          if(!r2.ok) throw new Error(j2.error||("HTTP "+r2.status));
+          showToast("built · "+(j2.task_count||0)+" tasks"
+            +(j1.deferred? " · "+j1.deferred+" brought forward":""));
+          todayData=null; todayFetchedAt=0; await fetchToday();
+        }catch(e){ showToast("couldn't build — "+e.message); }
+        finally{ buildBtn.disabled=false; buildBtn.textContent="build day"; }
+      });
+      box.append(g,p,s,buildBtn);
       todayBody.append(box);
       if((d.done||[]).length){
         const lbl=el("div","tv-section"); lbl.textContent="already done";
