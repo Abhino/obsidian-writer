@@ -1297,6 +1297,7 @@
           ph.append(el("span","n", p.tasks.length+" next"));
           if(fut.length) ph.append(el("span","pill future", fut.length+" future"));
           ph.append(projectMoveBtn(p, pane));
+          ph.append(projectDeleteBtn(p, pane));
           pc.append(ph);
           const meta = [];
           meta.push(p.tasks.length ? "next: "+p.tasks[0].text
@@ -1430,6 +1431,55 @@
       }catch(err){ toastBad("couldn't move project — "+err.message); }
     });
     return b;
+  }
+
+  function projectDeleteBtn(p, pane){
+    const b = el("button","ghost mini","×");
+    b.title = "Delete this project (and its next actions)";
+    let armed = false, timer = null;
+    const label = p.tasks.length
+      ? "delete "+p.tasks.length+" next action"+(p.tasks.length===1?"":"s")
+      : "delete?";
+    b.addEventListener("click", async e=>{
+      e.stopPropagation();
+      if(!armed){
+        armed = true; b.textContent = label; b.classList.add("on");
+        timer = setTimeout(()=>{ armed=false; b.textContent="×"; b.classList.remove("on"); }, 4000);
+        return;
+      }
+      clearTimeout(timer); armed = false;
+      b.disabled = true; b.textContent = "deleting…";
+      try{
+        const r = await rawFetch("/project/remove", {method:"POST",
+          body:JSON.stringify({name:p.body, from:pane, force:true})});
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j.error||("HTTP "+r.status));
+        setConn("online");
+        // undo restores the captured block verbatim
+        offerUndoProject(p.body, pane, j.block);
+        toast("project deleted");
+        refresh();
+      }catch(err){ toastBad("couldn't delete project — "+err.message); }
+      finally{ b.disabled=false; b.textContent="×"; b.classList.remove("on"); }
+    });
+    return b;
+  }
+
+  function offerUndoProject(name, pane, block){
+    const t=$("toast"); t.className="toast show"; t.innerHTML="";
+    t.append(el("span",null,"deleted project"));
+    const b=el("button","undo","undo");
+    b.addEventListener("click", async ()=>{
+      t.classList.remove("show");
+      try{
+        const r = await rawFetch("/project/restore", {method:"POST",
+          body:JSON.stringify({name, from:pane, block})});
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        setConn("online"); refresh();
+      }catch(err){ toastBad("couldn't restore — "+err.message); }
+    });
+    t.append(b);
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 6000);
   }
 
   function projectCard(title, pane, d){
