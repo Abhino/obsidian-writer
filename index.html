@@ -501,7 +501,7 @@
     <label for="cfgTarget">Inbox note</label>
     <input id="cfgTarget" placeholder="00 Inbox.md" />
     <label for="cfgOutside">Outside list note</label>
-    <input id="cfgOutside" placeholder="Lists/05 Outside Tasks.md" />
+    <input id="cfgOutside" placeholder="Lists/Outside Tasks.md" />
     <div class="test-result" id="testResult"></div>
     <div class="row">
       <button class="test" id="testBtn">Test connection</button>
@@ -555,7 +555,15 @@
   const $ = id => document.getElementById(id);
 
   let cfg = LS.get("inbox.cfg", { url:"", token:"", target:"00 Inbox.md",
-                                  outside:"Lists/05 Outside Tasks.md", vault:"" });
+                                  outside:"Lists/Outside Tasks.md", vault:"" });
+  // migrate the renamed outside note so an old saved config keeps working
+  if(cfg.outside==="Lists/05 Outside Tasks.md" || cfg.outside==="05 Outside Tasks.md"){
+    cfg.outside="Lists/Outside Tasks.md"; LS.set("inbox.cfg", cfg);
+  }
+  // migrate old pinned lists that still point at the renamed note
+  pins = pins.map(p => (p.file==="Lists/05 Outside Tasks.md"||p.file==="05 Outside Tasks.md")
+    ? Object.assign({}, p, {file:"Lists/Outside Tasks.md", label:(p.label||"").replace(/^05\\s+/,"")||p.label})
+    : p);
   // Where the composer writes. inbox/outside are notes addressed by PATH;
   // today/project are addressed by KIND and the backend works out the file
   // (today's month section, or the right bullet in Top Priorities).
@@ -577,7 +585,7 @@
   // the note the composer currently writes to
   function targetPath(){
     return composeTarget==="outside"
-      ? (cfg.outside||"Lists/05 Outside Tasks.md")
+      ? (cfg.outside||"Lists/Outside Tasks.md")
       : (cfg.target||"00 Inbox.md");
   }
   // Everything /capture needs for the current destination, in one object.
@@ -821,7 +829,7 @@
     pinSheet.classList.remove("open"); projSheet.classList.remove("open");
     $("cfgUrl").value=cfg.url||""; $("cfgToken").value=cfg.token||"";
     $("cfgTarget").value=cfg.target||"00 Inbox.md";
-    $("cfgOutside").value=cfg.outside||"Lists/05 Outside Tasks.md";
+    $("cfgOutside").value=cfg.outside||"Lists/Outside Tasks.md";
     $("testResult").textContent=""; $("testResult").className="test-result";
     scrim.classList.add("open"); sheet.classList.add("open");
   }
@@ -838,7 +846,7 @@
       url:$("cfgUrl").value.trim(),
       token:$("cfgToken").value,
       target:$("cfgTarget").value.trim()||"00 Inbox.md",
-      outside:$("cfgOutside").value.trim()||"Lists/05 Outside Tasks.md"
+      outside:$("cfgOutside").value.trim()||"Lists/Outside Tasks.md"
     };
     LS.set("inbox.cfg", cfg); closeSheet(); render(); renderPins();
     setComposeTarget(composeTarget); loadProjects(); flush(true);

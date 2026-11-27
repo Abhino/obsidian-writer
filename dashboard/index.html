@@ -117,6 +117,13 @@
     font:inherit; font-size:.8rem; line-height:1; border-radius:7px; padding:.1rem .45rem; cursor:pointer;
   }
   .side-sec .pinadd:hover{color:var(--accent); border-color:var(--accent-dim)}
+  .side-sec .fold{margin-left:auto; background:none; border:none; color:var(--faint); font:inherit; font-size:.9rem; cursor:pointer; padding:0 .1rem}
+  .side-sec .fold:hover{color:var(--accent)}
+  .listnav{display:flex; align-items:center; gap:.25rem; width:100%}
+  .listnav .navitem{flex:1}
+  .listedit{background:none; border:none; color:var(--faint); cursor:pointer; font-size:.78rem; padding:0 .2rem; opacity:0}
+  .listnav:hover .listedit{opacity:1}
+  .listedit:hover{color:var(--accent)}
   .dot2{width:8px; height:8px; border-radius:50%; flex:none; background:var(--faint)}
   .navitem.t-urgent .dot2{background:var(--warn)}
   .navitem.t-home .dot2{background:#7fb88a}
@@ -369,7 +376,7 @@
     .row{min-height:44px; padding:.3rem .4rem}
     .rowacts{gap:.1rem}
     .rowacts button{min-width:36px; min-height:36px; font-size:1.05rem}
-    .rowacts button:not(.mvb):not(.x){display:none}
+    .rowacts button:not(.mvb):not(.x):not(.listedit){display:none}
     input, textarea, [contenteditable]{font-size:16px}
     .sheet{width:calc(100vw - 1.5rem); max-height:86dvh; overflow-y:auto}
     .toast{bottom:calc(5.8rem + env(safe-area-inset-bottom,0px)); max-width:92vw}
@@ -416,7 +423,7 @@
       <button class="navitem" data-nav="aar"><span>Review</span><span class="n"></span></button>
       <div class="side-sec">tags</div>
       <div id="tagNav"></div>
-      <div class="side-sec">lists <button class="pinadd" id="pinAddBtn" title="Pin a new list">+</button></div>
+      <div class="side-sec" id="listsSec">lists <button class="pinadd" id="pinAddBtn" title="Pin a new list">+</button> <button class="fold" id="listsFold" title="Fold lists" aria-expanded="true">▾</button></div>
       <div id="listNav"></div>
       <div class="side-foot" id="sideFoot">—</div>
     </nav>
@@ -434,6 +441,18 @@
 
   <div class="mvscrim" id="mvScrim"></div>
   <div class="mv" id="mvSheet" role="dialog" aria-label="Move task"></div>
+
+  <div class="scrim" id="listScrim"></div>
+  <div class="sheet" id="listSheet" role="dialog" aria-label="Edit list">
+    <h2 id="listSheetTitle">Edit list</h2>
+    <label for="listName">List name</label>
+    <input id="listName" placeholder="e.g. Outside Tasks" />
+    <p style="margin:.6rem 0 0;font-size:.7rem;color:var(--faint);line-height:1.4">Renaming moves the note to <code>Lists/&lt;name&gt;.md</code> and updates the pin registry. The note's contents are preserved.</p>
+    <div class="rowb" style="margin-top:.7rem">
+      <button class="test" id="listUnpin" style="color:var(--warn)">Unpin</button>
+      <button class="save" id="listSave">Save</button>
+    </div>
+  </div>
 
   <div class="scrim" id="scrim"></div>
   <div class="sheet" id="sheet" role="dialog" aria-label="Settings">
@@ -700,11 +719,13 @@
   /** A checkable row of a pinned list. Lists are not /move panes, so this
    *  is deliberately simpler than a task row: no move actions — just the
    *  toggle, which writes through /pin/toggle. */
-  function listRow(item, path){
+  function listRow(item, path, opts){
+    opts = opts||{};
     const r = el("div","row static"+(item.checked?" done":"")+(item.box?"":" plain"));
     const cb = el("span","cb"); cb.innerHTML = CHECK;
     cb.addEventListener("click", async e=>{
       e.stopPropagation();
+      if(!item.box){ return; }
       const want = !item.checked;
       r.classList.add("pending"); r.classList.toggle("done", want);
       try{
@@ -723,7 +744,90 @@
     });
     const tx = el("span","tx", item.text);
     r.append(cb, tx);
+    if(opts.editable){
+      const acts = el("div","rowacts");
+      const ed = el("button","listedit","✎"); ed.title="Edit";
+      ed.addEventListener("click", ()=>editListItem(r, tx, item, path));
+      const rm = el("button","x","×"); rm.title="Delete";
+      rm.addEventListener("click", ()=>removeListItem(r, item, path));
+      acts.append(ed, rm);
+      r.append(acts);
+      r.tabIndex = 0;
+      r.addEventListener("keydown", e=>{
+        if(e.target !== r) return;
+        if(e.key!=="Backspace" && e.key!=="Delete") return;
+        if(item.checked) return;
+        e.preventDefault();
+        removeListItem(r, item, path);
+      });
+    }
     return r;
+  }
+
+  function editListItem(r, tx, item, path){
+    const before = item.raw || item.text;
+    tx.querySelectorAll(".badge").forEach(b=>b.remove());
+    tx.textContent = item.text;
+    tx.setAttribute("contenteditable","true");
+    tx.focus();
+    const sel=getSelection(), rg=document.createRange();
+    rg.selectNodeContents(tx); sel.removeAllRanges(); sel.addRange(rg);
+    let settled = false;
+    const done = async (save)=>{
+      if(settled) return;
+      settled = true;
+      tx.removeAttribute("contenteditable");
+      const after = tx.textContent.trim();
+      if(!save || !after || after===item.text) return render();
+      try{
+        const res = await rawFetch("/pin/update", {method:"POST",
+          body:JSON.stringify({path:path, text:before, new_text:after})});
+        if(!res.ok) throw new Error("HTTP "+res.status);
+        item.text = after; item.raw = after;
+        setConn("online");
+      }catch(err){ toastBad("couldn't update — "+err.message); }
+      render();
+    };
+    tx.onkeydown = e=>{
+      e.stopPropagation();
+      if(e.key==="Enter"){ e.preventDefault(); done(true); }
+      else if(e.key==="Escape"){ e.preventDefault(); done(false); }
+    };
+    tx.onblur = ()=>done(true);
+  }
+
+  async function removeListItem(r, item, path){
+    if(r.classList.contains("pending")) return;
+    r.classList.add("pending");
+    try{
+      const res = await rawFetch("/pin/remove", {method:"POST",
+        body:JSON.stringify({path:path, text:item.raw||item.text})});
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const L = (data.lists||[]).find(x=>x.path===path);
+      if(L) L.items = (L.items||[]).filter(x=>x!==(item));
+      r.classList.add("gone");
+      setTimeout(()=>r.remove(), 250);
+      setConn("online");
+      toast("removed");
+      // undo restores at the end of the note
+      const t = $("toast"); t.classList.add("show");
+      const undo = el("button","undo","undo");
+      undo.addEventListener("click", async ()=>{
+        t.classList.remove("show");
+        try{
+          const rr = await rawFetch("/pin/append", {method:"POST",
+            body:JSON.stringify({path:path, text:item.raw||item.text})});
+          if(!rr.ok) throw new Error("HTTP "+rr.status);
+          refresh();
+        }catch(e){ toastBad("couldn't undo"); }
+      });
+      t.append(undo);
+      clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 5000);
+      renderSide(); renderRail();
+    }catch(err){
+      r.classList.remove("pending");
+      toastBad("couldn't delete — "+err.message);
+    }
   }
 
   /** A list of rows. Lanes are grouping only now; the move sheet names
@@ -826,14 +930,22 @@
       b.addEventListener("click", ()=>{ tagFilter = tagFilter===t?"":t; render(); });
       tn.append(b);
     });
+    const listsCollapsed = collapsed.has("side:lists");
+    const lf = $("listsFold");
+    if(lf){ lf.textContent = listsCollapsed ? "▸" : "▾"; lf.setAttribute("aria-expanded", String(!listsCollapsed)); }
     const ln = $("listNav"); ln.innerHTML="";
+    ln.style.display = listsCollapsed ? "none" : "";
     for(const L of (data.lists||[])){
+      const wrap = el("div","listnav");
       const b = el("button","navitem");
       b.append(el("span",null,L.title||L.path),
                el("span","n",String(L.items.filter(i=>i.box&&!i.checked).length)));
       b.classList.toggle("on", nav==="list" && listNav===L.path);
       b.addEventListener("click", ()=>go("list", L.path));
-      ln.append(b);
+      const ed = el("button","listedit","✎"); ed.title="Edit list";
+      ed.addEventListener("click", e=>{ e.stopPropagation(); openListSheet(L); });
+      wrap.append(b, ed);
+      ln.append(wrap);
     }
     if(!((data.lists||[]).length))
       ln.append(el("div","empty","pin a note to see it here"));
@@ -1350,7 +1462,7 @@
     if(!L.exists){
       card.append(el("div","empty","not created yet — add something below to start it"));
     }
-    for(const it of L.items) card.append(listRow(it, L.path));
+    for(const it of L.items) card.append(listRow(it, L.path, {editable:true}));
     if(L.exists && !L.items.length) card.append(el("div","empty","empty"));
     const add = el("input","adder");
     add.placeholder = "add to "+(L.title||"list").toLowerCase()+"…";
@@ -2037,6 +2149,63 @@
       toast(j.created ? "created "+j.path : "already pinned");
       setConn("online");
     }catch(e){ toastBad("couldn't pin — "+e.message); setConn("offline"); }
+    refresh();
+  });
+  $("listsFold").addEventListener("click", e=>{
+    e.stopPropagation();
+    if(collapsed.has("side:lists")) collapsed.delete("side:lists");
+    else collapsed.add("side:lists");
+    LS.set("board.collapsed",[...collapsed]); renderSide();
+  });
+
+  // ── list sheet: rename / unpin ─────────
+  let editingList = null;
+  function openListSheet(L){
+    editingList = L;
+    $("listSheetTitle").textContent = "Edit list";
+    $("listName").value = L ? (L.title||"") : "";
+    const scrim = $("listScrim");
+    scrim.classList.add("open");
+    $("listSheet").classList.add("open");
+    setTimeout(()=>{ const i=$("listName"); i.focus(); i.select(); }, 80);
+  }
+  function closeListSheet(){
+    $("listScrim").classList.remove("open");
+    $("listSheet").classList.remove("open");
+    editingList = null;
+  }
+  $("listScrim").addEventListener("click", closeListSheet);
+  $("listSave").addEventListener("click", async ()=>{
+    if(!editingList) return;
+    const title = $("listName").value.trim();
+    if(!title){ toastBad("name required"); return; }
+    setConn(null, "renaming…");
+    try{
+      const r = await rawFetch("/pin/rename", {method:"POST",
+        body:JSON.stringify({path:editingList.path, title})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||r.status);
+      if(nav==="list" && listNav===editingList.path && j.path) listNav = j.path;
+      toast(j.renamed ? "renamed to "+title : "unchanged");
+      setConn("online");
+    }catch(e){ toastBad("couldn't rename — "+e.message); setConn("offline"); }
+    closeListSheet();
+    refresh();
+  });
+  $("listUnpin").addEventListener("click", async ()=>{
+    if(!editingList) return;
+    if(!confirm("Unpin \""+(editingList.title||editingList.path)+"\"? The note stays in the vault.")) return;
+    setConn(null, "unpinning…");
+    try{
+      const r = await rawFetch("/pin/unpin", {method:"POST",
+        body:JSON.stringify({path:editingList.path})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||r.status);
+      toast("unpinned");
+      if(nav==="list" && listNav===editingList.path){ nav="today"; listNav=null; }
+      setConn("online");
+    }catch(e){ toastBad("couldn't unpin — "+e.message); setConn("offline"); }
+    closeListSheet();
     refresh();
   });
 
