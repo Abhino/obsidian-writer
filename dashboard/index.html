@@ -173,6 +173,9 @@
   }
   .rail-head .rail-side{margin-left:auto; font-family:var(--mono); font-size:.66rem;
                         letter-spacing:0; text-transform:none; color:var(--muted); font-weight:500}
+  .rail-head .fold{background:none; border:none; color:var(--faint); font:inherit; font-size:.78rem; cursor:pointer; padding:0; line-height:1}
+  .rail-head .fold:hover{color:var(--accent)}
+  .rail-head .fold + span{margin-left:.1rem}
 
   /* ── projects ─────────────── */
   .projcard{
@@ -1509,17 +1512,38 @@
     for(const L of (data.lists||[]).slice(0,2)){
       const lc = el("div","card");
       const h = el("div","rail-head");
-      h.append(el("span",null,(L.title||"list").toLowerCase()));
+      const key = "rail:list:"+L.path;
+      const open = !collapsed.has(key);
+      const fold = el("button","fold", open?"▾":"▸");
+      fold.title = open ? "Collapse list" : "Expand list";
+      fold.setAttribute("aria-expanded", String(open));
+      h.append(fold, el("span",null,(L.title||"list").toLowerCase()));
+      const openCount = (L.items||[]).filter(i=>i.box&&!i.checked).length;
+      if(openCount) h.append(el("span","rail-side",String(openCount)));
       const ob = el("button","ghost mini","open");
       ob.addEventListener("click",()=>go("list", L.path));
       h.append(ob);
       lc.append(h);
-      if(!L.exists) lc.append(el("div","empty","not created yet"));
-      else if(!L.items.length) lc.append(el("div","empty","empty"));
+
+      const body = el("div","rail-list-body");
+      body.style.display = open ? "" : "none";
+      if(!L.exists) body.append(el("div","empty","not created yet"));
+      else if(!L.items.length) body.append(el("div","empty","empty"));
       else{
-        for(const it of L.items.slice(0,5)) lc.append(listRow(it, L.path));
-        if(L.items.length>5) lc.append(el("div","empty",(L.items.length-5)+" more — open for all"));
+        for(const it of L.items.slice(0,5)) body.append(listRow(it, L.path));
+        if(L.items.length>5) body.append(el("div","empty",(L.items.length-5)+" more — open for all"));
       }
+      lc.append(body);
+      fold.addEventListener("click", e=>{
+        e.stopPropagation();
+        const nowOpen = body.style.display === "none";
+        body.style.display = nowOpen ? "" : "none";
+        fold.textContent = nowOpen ? "▾" : "▸";
+        fold.title = nowOpen ? "Collapse list" : "Expand list";
+        fold.setAttribute("aria-expanded", String(nowOpen));
+        if(nowOpen) collapsed.delete(key); else collapsed.add(key);
+        LS.set("board.collapsed",[...collapsed]);
+      });
       host.append(lc);
     }
   }
